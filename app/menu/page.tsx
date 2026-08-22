@@ -257,7 +257,7 @@ export default function MenuPage() {
   const [isVegOnly, setIsVegOnly] = useState<boolean>(false);
 
   return (
-    <main className="min-h-screen bg-black text-white pb-20">
+    <main className="bg-black text-white pb-20">
       <Navbar />
       <div className="h-18" aria-hidden="true" />
 
@@ -276,7 +276,7 @@ export default function MenuPage() {
         </p>
       </div>
 
-      <div className="sticky top-24 z-30 bg-black/95 backdrop-blur-md border-b border-white/10 px-6 py-4 space-y-4">
+      <div className="sticky top-23 z-40 bg-black/30 backdrop-blur-md border-b border-white/5 px-6 py-4 space-y-4">
         <div className="relative">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -357,9 +357,13 @@ export default function MenuPage() {
       {selectedItem && (
         <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
+
+      <div className="px-6 py-6 text-center">
         <p className="text-gray-600 text-xs">
           Images are for representation purposes only. Actual product may vary.
         </p>
+      </div>
+
       <Footer />
     </main>
   );

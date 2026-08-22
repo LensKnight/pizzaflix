@@ -80,13 +80,14 @@ export default function StoreShowcase() {
               Get Directions
             </motion.button>
             </Link>
-
+            <Link href="/menu">
             <motion.button
               whileHover={{ scale: 1.08 }}
               className="border border-white px-8 py-3 rounded-md text-white"
             >
               View Menu
             </motion.button>
+            </Link>
           </div>
 
           {/* Trust row */}

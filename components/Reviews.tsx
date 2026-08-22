@@ -1,16 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 const GOOGLE_REVIEWS_URL = "https://www.google.com/maps/place/PizzaFlix/@26.1608399,91.6857895,19z/data=!4m8!3m7!1s0x375a5b8ff66379b5:0xbff821b786c40048!8m2!3d26.1609145!4d91.6861516!9m1!1b1!16s%2Fg%2F11z73szrl2!5m1!1e2?entry=ttu&g_ep=EgoyMDI2MDgxOS4wIKXMDSoASAFQAw%3D%3D";
 
-const reviews = [
+interface Review {
+  name: string;
+  rating: number;
+  comment: string;
+  url: string | null;
+  source: "google" | "website";
+}
+
+const staticReviews: Review[] = [
   {
     name: "Ananya Choudhury",
     rating: 5,
     comment:
       "A nice neighborhood cozy place to have tasty pizzas. Tried the Chicken Golden Delight Pizza and Chicken Popcorn, it was tasty one. Will explore the other things in the menu soon!",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
   {
     name: "diya saha",
@@ -18,20 +29,22 @@ const reviews = [
     comment:
       "Loved the whole experience, me and my friend just came from office and were craving some chatpata food, office fatigue and stress really cleared all the way after having a bite of Pizzaflix's Chicken Golden Delight Pizza and Chicken popcorn really loved the taste of chicken popcorn and the sauce it had also talking about the pizza, the crust was so soft and the pizza was really upto my liking loved it💜 also took takeaway for my family even they loved it, would try other options on the menu as well, you guys are really doing great keep growing 🤗",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
   {
     name: "Ranadip Mondal",
     rating: 5,
     comment:
-      "A great place for hangout with friends… The food was good specially the pizza is must try its better than domino’s…",
+      "A great place for hangout with friends… The food was good specially the pizza is must try its better than domino's…",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
   {
     name: "Bhumika Das",
     rating: 5,
-    comment:
-      "It was delicious ( chicken kurkure momo)😋 ❤️Definitely a 10/10 …",
+    comment: "It was delicious ( chicken kurkure momo)😋 ❤️Definitely a 10/10 …",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
   {
     name: "Arijit Bhattacharjee",
@@ -39,12 +52,14 @@ const reviews = [
     comment:
       "A hidden street-side gem pizza flix! Loved the fresh, cheesy pizza, momos, and much more and the friendly service. Great taste at an affordable price. Definitely worth a visit!",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
   {
     name: "Vishal Das",
     rating: 4,
     comment: "great!!! food! great service !",
     url: GOOGLE_REVIEWS_URL,
+    source: "google",
   },
 ];
 
@@ -87,8 +102,112 @@ function GoogleIcon() {
   );
 }
 
+function ReviewCard({ review }: { review: Review }) {
+  const initialLetter = review.name.trim().charAt(0).toUpperCase();
+
+  const cardContent = (
+    <>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <StarRating rating={review.rating} />
+          <div className="flex items-center gap-2 text-xs text-neutral-300 group-hover:text-white transition-colors bg-neutral-800/90 px-3 py-1 rounded-full border border-white/10">
+            {review.source === "google" ? (
+              <>
+                <GoogleIcon />
+                <span className="font-medium">Google</span>
+              </>
+            ) : (
+              <span className="font-medium text-red-500">Our Website</span>
+            )}
+          </div>
+        </div>
+
+        <p className="text-gray-300 text-base italic leading-relaxed line-clamp-3 mb-6">
+          "{review.comment}"
+        </p>
+      </div>
+
+      <div className="flex items-center gap-4 border-t border-white/5 pt-4">
+        <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 text-red-500 font-bold text-lg flex items-center justify-center shrink-0 uppercase">
+          {initialLetter}
+        </div>
+
+        <div className="truncate">
+          <h4 className="font-bold text-base truncate group-hover:text-red-500 transition-colors">
+            {review.name}
+          </h4>
+          <p className="text-gray-500 text-xs">
+            {review.source === "google" ? "Verified Google Reviewer ↗" : "Website Review"}
+          </p>
+        </div>
+      </div>
+    </>
+  );
+
+  const sharedClasses = `
+    group
+    w-[300px]
+    sm:w-[360px]
+    shrink-0
+    bg-neutral-900
+    rounded-2xl
+    border
+    border-white/10
+    p-6
+    hover:border-red-600/50
+    hover:bg-neutral-900/90
+    transition-all
+    duration-300
+    flex
+    flex-col
+    justify-between
+    ${review.url ? "cursor-pointer" : ""}
+  `;
+
+  if (review.url) {
+    return (
+      <a
+        href={review.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={sharedClasses}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  return <div className={sharedClasses}>{cardContent}</div>;
+}
+
 export default function Reviews() {
-  const infiniteReviews = [...reviews, ...reviews];
+  const [customerReviews, setCustomerReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    async function fetchReviews() {
+      const { data } = await supabase
+        .from("reviews")
+        .select("name, rating, comment")
+        .eq("approved", true)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setCustomerReviews(
+          data.map((r) => ({
+            name: r.name,
+            rating: r.rating,
+            comment: r.comment,
+            url: null,
+            source: "website" as const,
+          }))
+        );
+      }
+    }
+    fetchReviews();
+  }, []);
+
+  const allReviews = [...staticReviews, ...customerReviews];
+  const infiniteReviews = [...allReviews, ...allReviews];
 
   return (
     <section className="py-20 bg-black text-white overflow-hidden">
@@ -127,66 +246,9 @@ export default function Reviews() {
             },
           }}
         >
-          {infiniteReviews.map((review, index) => {
-            // First letter extracted and converted to uppercase
-            const initialLetter = review.name.trim().charAt(0).toUpperCase();
-
-            return (
-              <a
-                key={index}
-                href={review.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="
-                  group
-                  w-[300px]
-                  sm:w-[360px]
-                  shrink-0
-                  bg-neutral-900
-                  rounded-2xl
-                  border
-                  border-white/10
-                  p-6
-                  hover:border-red-600/50
-                  hover:bg-neutral-900/90
-                  transition-all
-                  duration-300
-                  flex
-                  flex-col
-                  justify-between
-                  cursor-pointer
-                "
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <StarRating rating={review.rating} />
-                    <div className="flex items-center gap-2 text-xs text-neutral-300 group-hover:text-white transition-colors bg-neutral-800/90 px-3 py-1 rounded-full border border-white/10">
-                      <GoogleIcon />
-                      <span className="font-medium">Google</span>
-                    </div>
-                  </div>
-
-                  <p className="text-gray-300 text-base italic leading-relaxed line-clamp-3 mb-6">
-                    "{review.comment}"
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4 border-t border-white/5 pt-4">
-                  {/* Name Initial Circle Badge */}
-                  <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 text-red-500 font-bold text-lg flex items-center justify-center shrink-0 uppercase">
-                    {initialLetter}
-                  </div>
-
-                  <div className="truncate">
-                    <h4 className="font-bold text-base truncate group-hover:text-red-500 transition-colors">
-                      {review.name}
-                    </h4>
-                    <p className="text-gray-500 text-xs">Verified Google Reviewer ↗</p>
-                  </div>
-                </div>
-              </a>
-            );
-          })}
+          {infiniteReviews.map((review, index) => (
+            <ReviewCard key={index} review={review} />
+          ))}
         </motion.div>
       </div>
     </section>
