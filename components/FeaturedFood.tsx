@@ -6,17 +6,17 @@ const foods = [
   {
     name: "Chicken Drumstick",
     tag: "Best Seller",
-    image: "/images/pizza.jpg",
+    image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=500&auto=format&fit=crop",
   },
   {
     name: "Chicken Golden Delight Pizza",
     tag: "Fan Favourite",
-    image: "/images/burger.jpg",
+    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&auto=format&fit=crop",
   },
   {
     name: "Mutton Momo",
     tag: "Value Pick",
-    image: "/images/combo.jpg",
+    image: "https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?w=500&auto=format&fit=crop",
   },
 ];
 
@@ -26,7 +26,7 @@ export default function FeaturedFood() {
       {/* Ambient glow */}
       <div className="absolute top-1/3 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-red-600/10 rounded-full blur-[100px] md:blur-[140px] pointer-events-none" />
 
-      {/* Giant background text — desktop only, too cluttered on mobile */}
+      {/* Giant background text — desktop only */}
       <span
         className="
           hidden md:block
@@ -92,6 +92,11 @@ export default function FeaturedFood() {
 
               {/* Red glow sweep — desktop hover only */}
               <div className="absolute inset-0 bg-linear-to-t from-red-600/40 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-500" />
+
+              {/* Disclaimer overlay watermark */}
+              <span className="absolute bottom-2 right-2 text-[8px] text-white/50 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs pointer-events-none">
+                *Creative visualization
+              </span>
 
               {/* Number tag */}
               <span className="absolute top-4 left-4 text-white/20 md:group-hover:text-red-600/50 font-(--font-bebas) text-4xl md:text-5xl leading-none transition-colors duration-500">

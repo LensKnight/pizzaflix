@@ -10,7 +10,6 @@ const reviews = [
     rating: 5,
     comment:
       "A nice neighborhood cozy place to have tasty pizzas. Tried the Chicken Golden Delight Pizza and Chicken Popcorn, it was tasty one. Will explore the other things in the menu soon!",
-    avatar: "/images/avatar1.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
   {
@@ -18,7 +17,6 @@ const reviews = [
     rating: 4,
     comment:
       "Loved the whole experience, me and my friend just came from office and were craving some chatpata food, office fatigue and stress really cleared all the way after having a bite of Pizzaflix's Chicken Golden Delight Pizza and Chicken popcorn really loved the taste of chicken popcorn and the sauce it had also talking about the pizza, the crust was so soft and the pizza was really upto my liking loved it💜 also took takeaway for my family even they loved it, would try other options on the menu as well, you guys are really doing great keep growing 🤗",
-    avatar: "/images/avatar2.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
   {
@@ -26,7 +24,6 @@ const reviews = [
     rating: 5,
     comment:
       "A great place for hangout with friends… The food was good specially the pizza is must try its better than domino’s…",
-    avatar: "/images/avatar3.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
   {
@@ -34,7 +31,6 @@ const reviews = [
     rating: 5,
     comment:
       "It was delicious ( chicken kurkure momo)😋 ❤️Definitely a 10/10 …",
-    avatar: "/images/avatar4.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
   {
@@ -42,14 +38,12 @@ const reviews = [
     rating: 5,
     comment:
       "A hidden street-side gem pizza flix! Loved the fresh, cheesy pizza, momos, and much more and the friendly service. Great taste at an affordable price. Definitely worth a visit!",
-    avatar: "/images/avatar5.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
   {
     name: "Vishal Das",
     rating: 4,
     comment: "great!!! food! great service !",
-    avatar: "/images/avatar6.jpg",
     url: GOOGLE_REVIEWS_URL,
   },
 ];
@@ -133,64 +127,66 @@ export default function Reviews() {
             },
           }}
         >
-          {infiniteReviews.map((review, index) => (
-            <a
-              key={index}
-              href={review.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="
-                group
-                w-[300px]
-                sm:w-[360px]
-                shrink-0
-                bg-neutral-900
-                rounded-2xl
-                border
-                border-white/10
-                p-6
-                hover:border-red-600/50
-                hover:bg-neutral-900/90
-                transition-all
-                duration-300
-                flex
-                flex-col
-                justify-between
-                cursor-pointer
-              "
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <StarRating rating={review.rating} />
-                  <div className="flex items-center gap-2 text-xs text-neutral-300 group-hover:text-white transition-colors bg-neutral-800/90 px-3 py-1 rounded-full border border-white/10">
-                    <GoogleIcon />
-                    <span className="font-medium">Google</span>
+          {infiniteReviews.map((review, index) => {
+            // First letter extracted and converted to uppercase
+            const initialLetter = review.name.trim().charAt(0).toUpperCase();
+
+            return (
+              <a
+                key={index}
+                href={review.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  group
+                  w-[300px]
+                  sm:w-[360px]
+                  shrink-0
+                  bg-neutral-900
+                  rounded-2xl
+                  border
+                  border-white/10
+                  p-6
+                  hover:border-red-600/50
+                  hover:bg-neutral-900/90
+                  transition-all
+                  duration-300
+                  flex
+                  flex-col
+                  justify-between
+                  cursor-pointer
+                "
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <StarRating rating={review.rating} />
+                    <div className="flex items-center gap-2 text-xs text-neutral-300 group-hover:text-white transition-colors bg-neutral-800/90 px-3 py-1 rounded-full border border-white/10">
+                      <GoogleIcon />
+                      <span className="font-medium">Google</span>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-300 text-base italic leading-relaxed line-clamp-3 mb-6">
+                    "{review.comment}"
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 border-t border-white/5 pt-4">
+                  {/* Name Initial Circle Badge */}
+                  <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 text-red-500 font-bold text-lg flex items-center justify-center shrink-0 uppercase">
+                    {initialLetter}
+                  </div>
+
+                  <div className="truncate">
+                    <h4 className="font-bold text-base truncate group-hover:text-red-500 transition-colors">
+                      {review.name}
+                    </h4>
+                    <p className="text-gray-500 text-xs">Verified Google Reviewer ↗</p>
                   </div>
                 </div>
-
-                <p className="text-gray-300 text-base italic leading-relaxed line-clamp-3 mb-6">
-                  "{review.comment}"
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 border-t border-white/5 pt-4">
-                <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden shrink-0">
-                  <img
-                    src={review.avatar}
-                    alt={review.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="truncate">
-                  <h4 className="font-bold text-base truncate group-hover:text-red-500 transition-colors">
-                    {review.name}
-                  </h4>
-                  <p className="text-gray-500 text-xs">Verified Google Reviewer ↗</p>
-                </div>
-              </div>
-            </a>
-          ))}
+              </a>
+            );
+          })}
         </motion.div>
       </div>
     </section>

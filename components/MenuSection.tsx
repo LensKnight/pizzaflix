@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-// 5 items selected from different categories with their respective offers
+// 5 items selected from different categories with their respective offers and real image links
 const menuItems = [
   {
     name: "Chicken Golden Delight Pizza",
@@ -14,7 +14,7 @@ const menuItems = [
     original: 149,
     off: 27,
     isVeg: false,
-    image: "/images/golden-delight.jpg", // Update with your actual image paths
+    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&auto=format&fit=crop",
   },
   {
     name: "Mutton Momo",
@@ -23,7 +23,7 @@ const menuItems = [
     original: 100,
     off: 30,
     isVeg: false,
-    image: "/images/mutton-momo.jpg",
+    image: "https://images.unsplash.com/photo-1625220194771-7ebdea0b70b9?w=500&auto=format&fit=crop",
   },
   {
     name: "Veg Burger",
@@ -32,7 +32,7 @@ const menuItems = [
     original: 70,
     off: 29,
     isVeg: true,
-    image: "/images/veg-burger.jpg",
+    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop",
   },
   {
     name: "Chicken Drumstick",
@@ -41,7 +41,7 @@ const menuItems = [
     original: 150,
     off: 33,
     isVeg: false,
-    image: "/images/chicken-drumstick.jpg",
+    image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=500&auto=format&fit=crop",
   },
   {
     name: "Chocolate Waffle",
@@ -50,12 +50,16 @@ const menuItems = [
     original: 100,
     off: 30,
     isVeg: true,
-    image: "/images/chocolate-waffle.jpg",
+    image: "https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=500&auto=format&fit=crop",
   },
 ];
 
+interface DietTagProps {
+  isVeg: boolean;
+}
+
 // Simple Veg/Non-Veg Tag for the list
-function DietTag({ isVeg }) {
+function DietTag({ isVeg }: DietTagProps) {
   return (
     <div className={`border w-3 h-3 flex items-center justify-center rounded-sm shrink-0 ${isVeg ? 'border-green-600' : 'border-red-600'}`}>
       <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
@@ -104,6 +108,7 @@ export default function MenuSection() {
                   alt={item.name}
                   fill
                   className="object-cover"
+                  unoptimized // External Unsplash domain ke liye
                 />
               </div>
 
