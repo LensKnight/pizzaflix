@@ -43,7 +43,7 @@ export default function Footer() {
               </a>
 
               <a
-                href="#"
+                href="https://www.instagram.com/piz_zaflix/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-red-600 transition-colors transform hover:scale-110"

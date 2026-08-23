@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Store, UserCheck } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import AuthModal from "@/components/AuthModel"; // Fixed Typo
 
 function generateOrderNumber() {
   const num = Math.floor(1000 + Math.random() * 9000);
@@ -20,10 +21,81 @@ export default function CheckoutPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [shopOpen, setShopOpen] = useState<boolean | null>(null);
+
+  // User Auth & Profile State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchProfileAndAuth();
+
+    // Realtime auth listener for Google OAuth redirects
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        fetchProfileAndAuth();
+      }
+    });
+
+    // Check shop status
+    async function checkShopStatus() {
+      const { data } = await supabase
+        .from("shop_status")
+        .select("is_open")
+        .eq("id", 1)
+        .maybeSingle();
+
+      setShopOpen(data ? data.is_open : true);
+    }
+
+    checkShopStatus();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Customer Profile & Session Fetcher
+  const fetchProfileAndAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      setIsLoggedIn(true);
+
+      // 1. Fetch saved details from profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, phone")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) {
+        if (profile.name) setName(profile.name);
+        if (profile.phone) setPhone(profile.phone);
+      } else {
+        // Fallback to Google Auth Metadata if profile row doesn't exist yet
+        const googleName = session.user.user_metadata?.full_name || session.user.user_metadata?.name;
+        if (googleName) setName(googleName);
+      }
+    } else {
+      setIsLoggedIn(false);
+    }
+  };
 
   const handleConfirm = async () => {
-    if (!name || !phone || cart.length === 0) return;
+    if (!name || !phone || cart.length === 0 || !shopOpen) return;
     setLoading(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    // If logged in, update profile table with phone/name if missing
+    if (session?.user) {
+      await supabase.from("profiles").upsert({
+        id: session.user.id,
+        name,
+        phone,
+      });
+    }
 
     const orderNumber = generateOrderNumber();
 
@@ -59,7 +131,10 @@ export default function CheckoutPage() {
           <ShoppingBag size={48} className="text-gray-700 mb-4" />
           <h2 className="text-2xl font-(--font-bebas)">YOUR CART IS EMPTY</h2>
           <p className="text-gray-500 text-sm mt-2">Add items from the menu to get started.</p>
-          <a href="/menu" className="mt-6 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg text-sm font-semibold transition-colors">
+          <a
+            href="/menu"
+            className="mt-6 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
+          >
             Browse Menu
           </a>
         </div>
@@ -74,25 +149,60 @@ export default function CheckoutPage() {
       <div className="h-18" />
 
       <section className="px-6 py-10 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-(--font-bebas) mb-6">YOUR ORDER</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-(--font-bebas)">YOUR ORDER</h1>
+
+          {/* Quick Login/Status Button */}
+          {!isLoggedIn ? (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer"
+            >
+              🔑 Log in for Faster Checkout
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-green-400 font-semibold bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-lg">
+              <UserCheck size={14} /> Logged In
+            </div>
+          )}
+        </div>
+
+        {/* Closed shop notice */}
+        {shopOpen === false && (
+          <div className="mb-6 p-4 rounded-xl bg-red-600/10 border border-red-600/30 flex items-center gap-3 text-red-500">
+            <Store size={20} className="shrink-0" />
+            <p className="text-sm font-semibold">
+              PizzaFlix is currently closed for new orders. Please check back later.
+            </p>
+          </div>
+        )}
 
         {/* Cart items */}
         <div className="space-y-3 mb-8">
           {cart.map((item) => (
-            <div key={item.name} className="flex items-center justify-between bg-neutral-900 border border-white/10 rounded-xl p-4">
+            <div
+              key={item.name}
+              className="flex items-center justify-between bg-neutral-900 border border-white/10 rounded-xl p-4"
+            >
               <div>
                 <h3 className="font-semibold">{item.name}</h3>
                 <p className="text-gray-500 text-sm">₹{item.price} each</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => updateQty(item.name, item.qty - 1)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                <button
+                  onClick={() => updateQty(item.name, item.qty - 1)}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
                   <Minus size={14} />
                 </button>
                 <span className="w-6 text-center">{item.qty}</span>
-                <button onClick={() => updateQty(item.name, item.qty + 1)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                <button
+                  onClick={() => updateQty(item.name, item.qty + 1)}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
                   <Plus size={14} />
                 </button>
-                <button onClick={() => removeItem(item.name)} className="text-red-600 ml-2">
+                <button onClick={() => removeItem(item.name)} className="text-red-600 hover:text-red-500 ml-2">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -113,7 +223,8 @@ export default function CheckoutPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your name"
-              className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-red-600/50"
+              disabled={shopOpen === false}
+              className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-red-600/50 disabled:opacity-50"
             />
           </div>
           <div>
@@ -122,7 +233,8 @@ export default function CheckoutPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+91 xxxxx xxxxx"
-              className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-red-600/50"
+              disabled={shopOpen === false}
+              className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-red-600/50 disabled:opacity-50"
             />
           </div>
         </div>
@@ -134,12 +246,23 @@ export default function CheckoutPage() {
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={handleConfirm}
-          disabled={!name || !phone || loading}
-          className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold py-4 rounded-xl transition-all"
+          disabled={!name || !phone || loading || shopOpen === false}
+          className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold py-4 rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
         >
-          {loading ? "Placing Order..." : "Confirm Order"}
+          {loading
+            ? "Placing Order..."
+            : shopOpen === false
+            ? "Orders Currently Closed"
+            : "Confirm Order"}
         </motion.button>
       </section>
+
+      {/* Login Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={fetchProfileAndAuth}
+      />
 
       <Footer />
     </main>

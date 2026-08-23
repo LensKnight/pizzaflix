@@ -134,7 +134,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 bg-orange-600 text-white font-semibold px-8 py-4 rounded-full mt-4"
               >
                 <MessageCircle size={18} />
-                Order on WhatsApp
+                Order Now
               </motion.a>
             </div>
           </motion.div>

@@ -1,8 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Lock, Clock, CheckCircle2, XCircle, Phone, Package, Hash, Volume2, VolumeX } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Lock,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Phone,
+  Package,
+  Hash,
+  Volume2,
+  VolumeX,
+  Power,
+  ChefHat,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
@@ -26,7 +38,7 @@ interface Order {
 
 const statusConfig = {
   pending: { label: "Pending", color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30", icon: Clock },
-  preparing: { label: "Preparing", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: Package },
+  preparing: { label: "Preparing", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: ChefHat },
   ready: { label: "Ready for Pickup", color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: Package },
   completed: { label: "Completed", color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/30", icon: CheckCircle2 },
   cancelled: { label: "Cancelled", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/30", icon: XCircle },
@@ -42,30 +54,34 @@ export default function AdminOrders() {
   const [filter, setFilter] = useState<"all" | Order["status"]>("all");
   const [loading, setLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [shopOpen, setShopOpen] = useState(true);
+  const [togglingShop, setTogglingShop] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const soundIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    audioRef.current = new Audio("/notification.wav");
-    audioRef.current.loop = false;
+    if (typeof window !== "undefined") {
+      audioRef.current = new Audio("/notification.wav");
+      audioRef.current.loop = false;
+    }
   }, []);
 
   useEffect(() => {
     if (authed) {
       fetchOrders();
-      const interval = setInterval(fetchOrders, 8000); // poll every 8s
+      fetchShopStatus();
+      const interval = setInterval(fetchOrders, 8000);
       return () => clearInterval(interval);
     }
   }, [authed]);
 
-  // Sound loop control — keeps beeping while any order is pending
   useEffect(() => {
     const hasPending = orders.some((o) => o.status === "pending");
 
-    if (hasPending && soundEnabled) {
+    if (hasPending && soundEnabled && audioUnlocked) {
       if (!soundIntervalRef.current) {
-        // play immediately, then every 4s
         audioRef.current?.play().catch(() => {});
         soundIntervalRef.current = setInterval(() => {
           audioRef.current?.play().catch(() => {});
@@ -84,7 +100,20 @@ export default function AdminOrders() {
         soundIntervalRef.current = null;
       }
     };
-  }, [orders, soundEnabled]);
+  }, [orders, soundEnabled, audioUnlocked]);
+
+  function unlockAudio() {
+    if (audioRef.current) {
+      audioRef.current
+        .play()
+        .then(() => {
+          audioRef.current?.pause();
+          audioRef.current!.currentTime = 0;
+          setAudioUnlocked(true);
+        })
+        .catch((err) => console.error("Audio unlock failed:", err));
+    }
+  }
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -106,6 +135,30 @@ export default function AdminOrders() {
     if (error) console.error("Fetch orders error:", error);
     if (data) setOrders(data);
     setLoading(false);
+  }
+
+  async function fetchShopStatus() {
+    const { data, error } = await supabase
+      .from("shop_status")
+      .select("is_open")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (error) console.error("Fetch shop status error:", error);
+    if (data) setShopOpen(data.is_open);
+  }
+
+  async function toggleShopStatus() {
+    setTogglingShop(true);
+    const newStatus = !shopOpen;
+    const { error } = await supabase
+      .from("shop_status")
+      .update({ is_open: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", 1);
+
+    if (!error) setShopOpen(newStatus);
+    else console.error("Toggle shop status error:", error);
+    setTogglingShop(false);
   }
 
   async function updateStatus(id: string, newStatus: Order["status"]) {
@@ -132,10 +185,13 @@ export default function AdminOrders() {
 
   if (!authed) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center px-6">
-        <form
+      <main className="min-h-screen bg-black flex items-center justify-center px-6 overflow-hidden relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[130px] pointer-events-none" />
+        <motion.form
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           onSubmit={handleLogin}
-          className="bg-neutral-900 border border-white/10 rounded-2xl p-8 max-w-sm w-full"
+          className="relative z-10 bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-sm w-full shadow-2xl"
         >
           <div className="flex items-center gap-2 text-red-600 mb-4">
             <Lock size={20} />
@@ -146,13 +202,13 @@ export default function AdminOrders() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
-            className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white mb-4 outline-none focus:border-red-600"
+            className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white mb-4 outline-none focus:border-red-600 transition-colors"
           />
           {loginError && <p className="text-red-500 text-sm mb-4">{loginError}</p>}
-          <button className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg">
+          <button className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-red-600/20">
             Login
           </button>
-        </form>
+        </motion.form>
       </main>
     );
   }
@@ -163,30 +219,98 @@ export default function AdminOrders() {
   const pendingCount = orders.filter((o) => o.status === "pending").length;
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+    <main className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[130px] pointer-events-none" />
+
+      {/* Sound unlock banner */}
+      {!audioUnlocked && (
+        <motion.button
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={unlockAudio}
+          className="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black text-sm font-bold py-2.5 text-center hover:bg-yellow-400 transition-colors"
+        >
+          🔊 Click to Enable Sound Alerts
+        </motion.button>
+      )}
+
+      <div className="relative z-10 max-w-4xl mx-auto px-6 py-10">
+        <div className={`flex items-center justify-between mb-8 ${!audioUnlocked ? "mt-8" : ""}`}>
           <div>
-            <h1 className="text-3xl font-(--font-bebas)">ORDERS ADMIN</h1>
+            <h1 className="text-3xl font-(--font-bebas) bg-linear-to-r from-white to-white/70 bg-clip-text text-transparent">
+              ORDERS ADMIN
+            </h1>
             {pendingCount > 0 && (
-              <p className="text-yellow-500 text-xs font-semibold mt-1">
+              <motion.p
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="text-yellow-500 text-xs font-semibold mt-1"
+              >
                 {pendingCount} new order{pendingCount > 1 ? "s" : ""} waiting
-              </p>
+              </motion.p>
             )}
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="text-gray-400 hover:text-white"
+              className="text-gray-400 hover:text-white transition-colors"
               title={soundEnabled ? "Mute alerts" : "Unmute alerts"}
             >
               {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
             </button>
-            <button onClick={fetchOrders} className="text-gray-400 hover:text-white text-sm">
+            <button onClick={fetchOrders} className="text-gray-400 hover:text-white text-sm transition-colors">
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
         </div>
+
+        {/* Shop open/closed toggle — the main feature */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`relative overflow-hidden rounded-2xl border p-6 mb-8 transition-colors ${
+            shopOpen
+              ? "border-green-600/30 bg-green-600/5"
+              : "border-red-600/30 bg-red-600/5"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  shopOpen ? "bg-green-600/20" : "bg-red-600/20"
+                }`}
+              >
+                <Power size={22} className={shopOpen ? "text-green-500" : "text-red-500"} />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">
+                  {shopOpen ? "Accepting Orders" : "Orders Paused"}
+                </h2>
+                <p className="text-gray-400 text-sm">
+                  {shopOpen
+                    ? "Customers can place orders right now"
+                    : "Customers will see 'PizzaFlix is closed'"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleShopStatus}
+              disabled={togglingShop}
+              className={`relative w-16 h-9 rounded-full transition-colors disabled:opacity-50 ${
+                shopOpen ? "bg-green-600" : "bg-neutral-700"
+              }`}
+            >
+              <motion.div
+                animate={{ x: shopOpen ? 28 : 4 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                className="absolute top-1 w-7 h-7 bg-white rounded-full shadow-md"
+              />
+            </button>
+          </div>
+        </motion.div>
 
         {/* Filter tabs */}
         <div className="flex gap-2 overflow-x-auto mb-8 pb-2">
@@ -195,10 +319,10 @@ export default function AdminOrders() {
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition-colors ${
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition-all ${
                   filter === s
-                    ? "bg-red-600 text-white"
-                    : "bg-white/5 text-gray-400 hover:text-white"
+                    ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+                    : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {s === "all" ? "All" : statusConfig[s].label}
@@ -210,89 +334,96 @@ export default function AdminOrders() {
         {/* Orders list */}
         <div className="space-y-4">
           {filteredOrders.length === 0 && (
-            <p className="text-gray-600 text-sm text-center py-10">No orders found.</p>
+            <p className="text-gray-600 text-sm text-center py-16">No orders found.</p>
           )}
 
-          {filteredOrders.map((order) => {
-            const config = statusConfig[order.status];
-            const StatusIcon = config.icon;
-            const upcoming = nextStatus(order.status);
+          <AnimatePresence>
+            {filteredOrders.map((order) => {
+              const config = statusConfig[order.status];
+              const StatusIcon = config.icon;
+              const upcoming = nextStatus(order.status);
 
-            return (
-              <motion.div
-                key={order.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`border rounded-xl p-5 ${config.border} bg-neutral-900 ${
-                  order.status === "pending" ? "animate-pulse" : ""
-                }`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold mb-1">
-                      <Hash size={12} />
-                      {order.order_number}
+              return (
+                <motion.div
+                  key={order.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`relative overflow-hidden border rounded-2xl p-5 backdrop-blur-sm transition-all ${config.border} bg-neutral-900/60 hover:border-white/20`}
+                >
+                  {order.status === "pending" && (
+                    <motion.div
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="absolute inset-0 bg-yellow-500/5 pointer-events-none"
+                    />
+                  )}
+
+                  <div className="relative flex justify-between items-start mb-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold mb-1">
+                        <Hash size={12} />
+                        {order.order_number}
+                      </div>
+                      <h3 className="font-bold text-lg">{order.customer_name}</h3>
+                      <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1">
+                        <Phone size={12} />
+                        {order.phone}
+                      </div>
                     </div>
-                    <h3 className="font-bold text-lg">{order.customer_name}</h3>
-                    <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1">
-                      <Phone size={12} />
-                      {order.phone}
+
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${config.bg} ${config.color}`}>
+                      <StatusIcon size={14} />
+                      {config.label}
                     </div>
                   </div>
 
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${config.bg} ${config.color}`}>
-                    <StatusIcon size={14} />
-                    {config.label}
+                  <div className="relative border-t border-white/10 pt-3 mt-3 space-y-1">
+                    {order.items.map((item, i) => (
+                      <div key={i} className="flex justify-between text-sm text-gray-300">
+                        <span>{item.qty}x {item.name}</span>
+                        <span>₹{item.price * item.qty}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
 
-                {/* Items */}
-                <div className="border-t border-white/10 pt-3 mt-3 space-y-1">
-                  {order.items.map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm text-gray-300">
-                      <span>{item.qty}x {item.name}</span>
-                      <span>₹{item.price * item.qty}</span>
-                    </div>
-                  ))}
-                </div>
+                  <div className="relative flex justify-between items-center mt-3 pt-3 border-t border-white/10">
+                    <span className="text-gray-400 text-sm">Total</span>
+                    <span className="text-white font-bold text-lg">₹{order.total}</span>
+                  </div>
 
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
-                  <span className="text-gray-400 text-sm">Total</span>
-                  <span className="text-white font-bold text-lg">₹{order.total}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 mt-4">
-                  {order.status === "pending" ? (
-                    <button
-                      onClick={() => updateStatus(order.id, "preparing")}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
-                    >
-                      Accept Order
-                    </button>
-                  ) : (
-                    upcoming && order.status !== "cancelled" && (
+                  <div className="relative flex gap-2 mt-4">
+                    {order.status === "pending" ? (
                       <button
-                        onClick={() => updateStatus(order.id, upcoming)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                        onClick={() => updateStatus(order.id, "preparing")}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-green-600/20"
                       >
-                        Mark as {statusConfig[upcoming].label}
+                        Accept Order
                       </button>
-                    )
-                  )}
-                  {order.status !== "completed" && order.status !== "cancelled" && (
-                    <button
-                      onClick={() => updateStatus(order.id, "cancelled")}
-                      className="px-4 bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+                    ) : (
+                      upcoming && order.status !== "cancelled" && (
+                        <button
+                          onClick={() => updateStatus(order.id, upcoming)}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                        >
+                          Mark as {statusConfig[upcoming].label}
+                        </button>
+                      )
+                    )}
+                    {order.status !== "completed" && order.status !== "cancelled" && (
+                      <button
+                        onClick={() => updateStatus(order.id, "cancelled")}
+                        className="px-4 bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
     </main>
