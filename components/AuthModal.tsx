@@ -118,17 +118,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
               </svg>
               Continue with Google
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleSocialLogin("apple")}
-              className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 border border-white/10"
-            >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 170 170">
-                <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.16-1.9-14.49-6.08-3.23-2.6-7.1-7.22-11.61-13.88-6.08-8.98-10.9-18.73-14.47-29.27-3.57-10.53-5.35-20.73-5.35-30.58 0-14.28 3.57-26.01 10.72-35.19 7.14-9.18 16.27-13.88 27.38-14.1 5.3 0 10.78 1.34 16.44 4.02 5.66 2.68 9.57 4.02 11.72 4.02 1.83 0 5.75-1.34 11.78-4.02 6.03-2.68 11.23-3.92 15.61-3.71 12.18.66 21.84 5.21 29 13.67-10.75 6.5-16.01 15.42-15.79 26.78.22 8.87 3.57 16.3 10.05 22.3 6.48 6 14.18 9.4 23.1 10.2-1.3 5.48-3.16 10.84-5.58 16.08zM119.22 31.02c0-7.38 2.65-14.35 7.95-20.91 5.3-6.56 12.01-10.11 20.13-10.65.11.98.17 1.85.17 2.61 0 7.28-2.68 14.24-8.04 20.88-5.36 6.64-12.08 10.22-20.21 10.74-.06-.88-.09-1.77-.09-2.67z" />
-              </svg>
-              Continue with Apple
-            </button>
           </div>
 
           <div className="relative flex items-center justify-center mb-6">
