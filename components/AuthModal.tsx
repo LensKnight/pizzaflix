@@ -23,12 +23,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   if (!isOpen) return null;
 
   // 1-Click Social Sign In Handler
+
   const handleSocialLogin = async (provider: "google" | "apple") => {
     try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/checkout`,
+          redirectTo: `${origin}/checkout`,
         },
       });
       if (error) throw error;
@@ -36,7 +38,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       if (err instanceof Error) setError(err.message);
     }
   };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
