@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,6 +13,7 @@ import {
   LucideIcon,
   Loader2,
   Utensils,
+  Volume2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
@@ -101,7 +102,14 @@ export default function OrderReceiptPage() {
   const [loading, setLoading] = useState(true);
   const [isExpired, setIsExpired] = useState(false);
 
+  // Sound ref & previous status tracking
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prevStatusRef = useRef<string | null>(null);
+
   useEffect(() => {
+    // MP3 Audio Initialize
+    audioRef.current = new Audio("/accept.mp3");
+
     async function fetchOrder() {
       const { data, error } = await supabase
         .from("orders")
@@ -113,6 +121,7 @@ export default function OrderReceiptPage() {
 
       if (data) {
         setOrder(data);
+        prevStatusRef.current = data.status;
         if (data.expires_at) {
           setIsExpired(new Date(data.expires_at) < new Date());
         }
@@ -132,7 +141,15 @@ export default function OrderReceiptPage() {
           filter: `order_number=eq.${params.id}`,
         },
         (payload) => {
-          setOrder(payload.new as Order);
+          const newOrder = payload.new as Order;
+          
+          // Trigger audio only when order changes to 'ready'
+          if (newOrder.status === "ready" && prevStatusRef.current !== "ready") {
+            playAlertSound();
+          }
+
+          prevStatusRef.current = newOrder.status;
+          setOrder(newOrder);
         }
       )
       .subscribe();
@@ -141,6 +158,16 @@ export default function OrderReceiptPage() {
       supabase.removeChannel(channel);
     };
   }, [params.id]);
+
+  // Audio trigger helper function
+  const playAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch((err) => {
+        // Handle browser autoplay restriction silently
+        console.warn("Autoplay audio blocked by browser policy:", err);
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -312,10 +339,12 @@ export default function OrderReceiptPage() {
 
                       {order.status === "ready" && (
                         <motion.div
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ repeat: Infinity, duration: 1 }}
+                          animate={{ scale: [1, 1.15, 1] }}
+                          transition={{ repeat: Infinity, duration: 0.8 }}
+                          className="relative"
                         >
-                          <Package className="text-orange-400" size={34} />
+                          <span className="animate-ping absolute -inset-2 rounded-full bg-orange-500/40" />
+                          <Package className="text-orange-400 relative z-10" size={34} />
                         </motion.div>
                       )}
 
@@ -337,6 +366,16 @@ export default function OrderReceiptPage() {
                     <span className={`${currentStatus.color} text-sm font-bold uppercase tracking-wider`}>
                       {currentStatus.label}
                     </span>
+
+                    {/* Test Audio Button if ready */}
+                    {order.status === "ready" && (
+                      <button
+                        onClick={playAlertSound}
+                        className="mt-2 flex items-center gap-1.5 text-[10px] text-orange-400/80 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/20 hover:bg-orange-500/20 transition-all"
+                      >
+                        <Volume2 size={12} /> Replay Alert Sound
+                      </button>
+                    )}
 
                     {/* Animated Jumping Dots for Pending State */}
                     {order.status === "pending" && (
