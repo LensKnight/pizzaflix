@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock,
   Clock,
   CheckCircle2,
   XCircle,
@@ -16,8 +15,6 @@ import {
   ChefHat,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 interface OrderItem {
   name: string;
@@ -47,9 +44,6 @@ const statusConfig = {
 const statusFlow: Order["status"][] = ["pending", "preparing", "ready", "completed"];
 
 export default function AdminOrders() {
-  const [authed, setAuthed] = useState(false);
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"all" | Order["status"]>("all");
   const [loading, setLoading] = useState(false);
@@ -69,13 +63,11 @@ export default function AdminOrders() {
   }, []);
 
   useEffect(() => {
-    if (authed) {
-      fetchOrders();
-      fetchShopStatus();
-      const interval = setInterval(fetchOrders, 8000);
-      return () => clearInterval(interval);
-    }
-  }, [authed]);
+    fetchOrders();
+    fetchShopStatus();
+    const interval = setInterval(fetchOrders, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const hasPending = orders.some((o) => o.status === "pending");
@@ -112,16 +104,6 @@ export default function AdminOrders() {
           setAudioUnlocked(true);
         })
         .catch((err) => console.error("Audio unlock failed:", err));
-    }
-  }
-
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoginError("");
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true);
-    } else {
-      setLoginError("Incorrect password");
     }
   }
 
@@ -181,36 +163,6 @@ export default function AdminOrders() {
     const idx = statusFlow.indexOf(current);
     if (idx === -1 || idx === statusFlow.length - 1) return null;
     return statusFlow[idx + 1];
-  }
-
-  if (!authed) {
-    return (
-      <main className="min-h-screen bg-black flex items-center justify-center px-6 overflow-hidden relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[130px] pointer-events-none" />
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleLogin}
-          className="relative z-10 bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-sm w-full shadow-2xl"
-        >
-          <div className="flex items-center gap-2 text-red-600 mb-4">
-            <Lock size={20} />
-            <h1 className="text-xl font-bold text-white">Admin Login</h1>
-          </div>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-            className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white mb-4 outline-none focus:border-red-600 transition-colors"
-          />
-          {loginError && <p className="text-red-500 text-sm mb-4">{loginError}</p>}
-          <button className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-red-600/20">
-            Login
-          </button>
-        </motion.form>
-      </main>
-    );
   }
 
   const filteredOrders =
