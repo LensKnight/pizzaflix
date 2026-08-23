@@ -21,28 +21,32 @@ const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // 1. Page load hone par localStorage se pehle se saved cart loading
+  // 1. First Load: Sirf Client-side (Browser) par localStorage se read karo
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem("pizzaflix_cart");
       if (savedCart) {
         setCart(JSON.parse(savedCart));
       }
-    } catch (e) {
-      console.error("Failed to load cart from localStorage", e);
+    } catch (error) {
+      console.error("Error reading cart from localStorage:", error);
     } finally {
-      setIsInitialized(true);
+      setIsMounted(true); // Signal ki initial load complete ho gaya hai
     }
   }, []);
 
-  // 2. Jab bhi cart state badlegi, localStorage update ho jaayega
+  // 2. Save Changes: Sirf Tabhi save karo jab Component fully mount ho chuka ho
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem("pizzaflix_cart", JSON.stringify(cart));
+    if (isMounted) {
+      try {
+        localStorage.setItem("pizzaflix_cart", JSON.stringify(cart));
+      } catch (error) {
+        console.error("Error saving cart to localStorage:", error);
+      }
     }
-  }, [cart, isInitialized]);
+  }, [cart, isMounted]);
 
   const addItem = (item: { name: string; price: number }) => {
     setCart((prev) => {
