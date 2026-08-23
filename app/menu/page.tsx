@@ -301,7 +301,7 @@ export default function MenuPage() {
         </p>
       </div>
 
-      <div className="sticky top-23 z-40 bg-black/30 backdrop-blur-md border-b border-white/5 px-6 py-4 space-y-4">
+      <div className="sticky top-18 z-40 bg-black/30 backdrop-blur-md border-b border-white/5 px-6 py-4 space-y-4">
         <div className="relative">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input

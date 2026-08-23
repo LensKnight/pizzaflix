@@ -8,7 +8,7 @@ import { useCart } from "@/lib/CartContext";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import AuthModal from "@/components/AuthModel"; // Fixed Typo
+import AuthModal from "@/components/AuthModal"; // Fixed Typo
 
 function generateOrderNumber() {
   const num = Math.floor(1000 + Math.random() * 9000);
