@@ -12,6 +12,7 @@ const navLinks = [
   { label: "Offers", href: "/#Offers" },
   { label: "Feedback", href: "/feedback" },
   { label: "About Us", href: "/#aboutus" },
+  { label: "Cart", href: "/checkout"}
 ];
 
 export default function Navbar() {

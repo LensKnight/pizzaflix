@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Lock, Clock, CheckCircle2, XCircle, Phone, MapPin, Package } from "lucide-react";
+import { Lock, Clock, CheckCircle2, XCircle, Phone, Package, Hash, Volume2, VolumeX } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
-// TODO: replace with real type once Supabase table is ready
 interface OrderItem {
   name: string;
   qty: number;
@@ -15,51 +15,24 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  customerName: string;
+  order_number: string;
+  customer_name: string;
   phone: string;
-  address: string;
   items: OrderItem[];
   total: number;
-  status: "pending" | "preparing" | "out_for_delivery" | "delivered" | "cancelled";
+  status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
   created_at: string;
 }
-
-// TODO: remove — placeholder data until API/Supabase is connected
-const dummyOrders: Order[] = [
-  {
-    id: "ord_1",
-    customerName: "Rahul Sharma",
-    phone: "+91 98765 43210",
-    address: "Ananda Nagar, Adabari, Guwahati",
-    items: [
-      { name: "Margherita Pizza", qty: 1, price: 69 },
-      { name: "Chicken Momo", qty: 2, price: 50 },
-    ],
-    total: 169,
-    status: "pending",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "ord_2",
-    customerName: "Priya Das",
-    phone: "+91 91234 56789",
-    address: "Zoo Road, Guwahati",
-    items: [{ name: "Chicken Golden Delight Pizza", qty: 1, price: 109 }],
-    total: 109,
-    status: "preparing",
-    created_at: new Date().toISOString(),
-  },
-];
 
 const statusConfig = {
   pending: { label: "Pending", color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30", icon: Clock },
   preparing: { label: "Preparing", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: Package },
-  out_for_delivery: { label: "Out for Delivery", color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: Package },
-  delivered: { label: "Delivered", color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/30", icon: CheckCircle2 },
+  ready: { label: "Ready for Pickup", color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: Package },
+  completed: { label: "Completed", color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/30", icon: CheckCircle2 },
   cancelled: { label: "Cancelled", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/30", icon: XCircle },
 };
 
-const statusFlow: Order["status"][] = ["pending", "preparing", "out_for_delivery", "delivered"];
+const statusFlow: Order["status"][] = ["pending", "preparing", "ready", "completed"];
 
 export default function AdminOrders() {
   const [authed, setAuthed] = useState(false);
@@ -67,10 +40,51 @@ export default function AdminOrders() {
   const [loginError, setLoginError] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"all" | Order["status"]>("all");
+  const [loading, setLoading] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const soundIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (authed) fetchOrders();
+    audioRef.current = new Audio("/notification.wav");
+    audioRef.current.loop = false;
+  }, []);
+
+  useEffect(() => {
+    if (authed) {
+      fetchOrders();
+      const interval = setInterval(fetchOrders, 8000); // poll every 8s
+      return () => clearInterval(interval);
+    }
   }, [authed]);
+
+  // Sound loop control — keeps beeping while any order is pending
+  useEffect(() => {
+    const hasPending = orders.some((o) => o.status === "pending");
+
+    if (hasPending && soundEnabled) {
+      if (!soundIntervalRef.current) {
+        // play immediately, then every 4s
+        audioRef.current?.play().catch(() => {});
+        soundIntervalRef.current = setInterval(() => {
+          audioRef.current?.play().catch(() => {});
+        }, 4000);
+      }
+    } else {
+      if (soundIntervalRef.current) {
+        clearInterval(soundIntervalRef.current);
+        soundIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (soundIntervalRef.current) {
+        clearInterval(soundIntervalRef.current);
+        soundIntervalRef.current = null;
+      }
+    };
+  }, [orders, soundEnabled]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -82,19 +96,32 @@ export default function AdminOrders() {
     }
   }
 
-  function fetchOrders() {
-    // TODO: replace with real fetch, e.g.
-    // const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-    // if (data) setOrders(data);
-    setOrders(dummyOrders);
+  async function fetchOrders() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) console.error("Fetch orders error:", error);
+    if (data) setOrders(data);
+    setLoading(false);
   }
 
-  function updateStatus(id: string, newStatus: Order["status"]) {
-    // TODO: replace with real update, e.g.
-    // await supabase.from("orders").update({ status: newStatus }).eq("id", id);
+  async function updateStatus(id: string, newStatus: Order["status"]) {
     setOrders((prev) =>
       prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
     );
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Update status error:", error);
+      fetchOrders();
+    }
   }
 
   function nextStatus(current: Order["status"]) {
@@ -133,14 +160,37 @@ export default function AdminOrders() {
   const filteredOrders =
     filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+
   return (
     <main className="min-h-screen bg-black text-white px-6 py-10">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-(--font-bebas) mb-8">ORDERS ADMIN</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-(--font-bebas)">ORDERS ADMIN</h1>
+            {pendingCount > 0 && (
+              <p className="text-yellow-500 text-xs font-semibold mt-1">
+                {pendingCount} new order{pendingCount > 1 ? "s" : ""} waiting
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="text-gray-400 hover:text-white"
+              title={soundEnabled ? "Mute alerts" : "Unmute alerts"}
+            >
+              {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            </button>
+            <button onClick={fetchOrders} className="text-gray-400 hover:text-white text-sm">
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+        </div>
 
         {/* Filter tabs */}
         <div className="flex gap-2 overflow-x-auto mb-8 pb-2">
-          {(["all", "pending", "preparing", "out_for_delivery", "delivered", "cancelled"] as const).map(
+          {(["all", "pending", "preparing", "ready", "completed", "cancelled"] as const).map(
             (s) => (
               <button
                 key={s}
@@ -174,18 +224,20 @@ export default function AdminOrders() {
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`border rounded-xl p-5 ${config.border} bg-neutral-900`}
+                className={`border rounded-xl p-5 ${config.border} bg-neutral-900 ${
+                  order.status === "pending" ? "animate-pulse" : ""
+                }`}
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="font-bold text-lg">{order.customerName}</h3>
+                    <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold mb-1">
+                      <Hash size={12} />
+                      {order.order_number}
+                    </div>
+                    <h3 className="font-bold text-lg">{order.customer_name}</h3>
                     <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1">
                       <Phone size={12} />
                       {order.phone}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1">
-                      <MapPin size={12} />
-                      {order.address}
                     </div>
                   </div>
 
@@ -212,15 +264,24 @@ export default function AdminOrders() {
 
                 {/* Actions */}
                 <div className="flex gap-2 mt-4">
-                  {upcoming && order.status !== "cancelled" && (
+                  {order.status === "pending" ? (
                     <button
-                      onClick={() => updateStatus(order.id, upcoming)}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                      onClick={() => updateStatus(order.id, "preparing")}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
                     >
-                      Mark as {statusConfig[upcoming].label}
+                      Accept Order
                     </button>
+                  ) : (
+                    upcoming && order.status !== "cancelled" && (
+                      <button
+                        onClick={() => updateStatus(order.id, upcoming)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                      >
+                        Mark as {statusConfig[upcoming].label}
+                      </button>
+                    )
                   )}
-                  {order.status !== "delivered" && order.status !== "cancelled" && (
+                  {order.status !== "completed" && order.status !== "cancelled" && (
                     <button
                       onClick={() => updateStatus(order.id, "cancelled")}
                       className="px-4 bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition-colors"

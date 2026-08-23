@@ -14,10 +14,14 @@ import {
   Crown,
   Flame,
   Search,
+  Check,
+  ShoppingCart,
   LucideIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { useCart } from "@/lib/CartContext";
 
 // TypeScript Interfaces
 interface MenuItem {
@@ -27,7 +31,7 @@ interface MenuItem {
   off: number;
   isVeg: boolean;
   description: string;
-  image: string; // <-- Image URL prop
+  image: string;
   top?: number;
 }
 
@@ -46,7 +50,6 @@ const categories: Category[] = [
   { id: "drinks", label: "Drinks", icon: CupSoda },
 ];
 
-// High Quality Food Image URLs added to menuData
 const menuData: Record<string, MenuItem[]> = {
   pizza: [
     { name: "Margherita Pizza", price: 69, original: 89, off: 22, isVeg: true, description: "Classic delight with 100% real mozzarella cheese.", image: "https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,h_600/FOOD_CATALOG/IMAGES/CMS/2026/6/21/9879cbe4-5a59-4ba1-8e76-bea7aa384886_e6a7842d-d1c7-441c-b31d-4b699bea27af.jpg" },
@@ -96,71 +99,80 @@ function DietTag({ isVeg }: { isVeg: boolean }) {
 interface ItemRowProps {
   item: MenuItem;
   onClick: (item: MenuItem) => void;
+  onAdd: (item: MenuItem) => void;
   index: number;
 }
 
-function ItemRow({ item, onClick, index }: ItemRowProps) {
+function ItemRow({ item, onClick, onAdd, index }: ItemRowProps) {
   return (
-    <motion.button
+    <motion.div
+      role="button"
+      tabIndex={0}
       onClick={() => onClick(item)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick(item);
+      }}
       initial={{ opacity: 0, y: 15 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.04 }}
       viewport={{ once: true }}
       whileTap={{ scale: 0.98 }}
-      className="w-full flex items-start gap-4 py-6 text-left border-b border-white/10"
+      className="w-full flex items-start gap-4 py-6 text-left border-b border-white/10 cursor-pointer"
     >
       <div className="flex-1 min-w-0">
         <div className="mb-1.5">
           <DietTag isVeg={item.isVeg} />
         </div>
-        
+
         <h3 className="text-white font-semibold text-lg leading-snug">
           {item.name}
         </h3>
-        
+
         <div className="flex items-center gap-2 mt-1">
           <span className="text-white font-bold text-base">₹{item.price}</span>
           <span className="text-gray-500 text-sm line-through">₹{item.original}</span>
           <span className="text-green-500 text-xs font-bold">{item.off}% OFF</span>
         </div>
-        
+
         <p className="text-gray-400 text-sm mt-2 line-clamp-2 leading-relaxed">
           {item.description}
         </p>
       </div>
 
-      {/* Render Image Thumbnail */}
       <div className="relative w-28 h-28 rounded-2xl bg-neutral-900 shrink-0 overflow-hidden shadow-lg border border-white/5">
         <img
           src={item.image}
           alt={item.name}
           className="w-full h-full object-cover"
         />
-        
+
         {item.top && (
           <span className="absolute top-0 left-0 w-full bg-red-600 text-[10px] font-bold text-center py-0.5 shadow-md z-10">
             TOP #{item.top}
           </span>
         )}
 
-        <button 
-          onClick={(e) => { e.stopPropagation(); onClick(item); }}
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-white text-black font-extrabold text-xs px-5 py-1 rounded-lg shadow-lg border border-gray-200 uppercase tracking-wide hover:bg-gray-100 transition-colors z-10"
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd(item);
+          }}
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-white text-black font-extrabold text-xs px-5 py-1 rounded-lg shadow-lg border border-gray-200 uppercase tracking-wide hover:bg-gray-100 active:scale-95 transition-all z-10"
         >
           Add
         </button>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
 interface ItemModalProps {
   item: MenuItem | null;
   onClose: () => void;
+  onAdd: (item: MenuItem) => void;
 }
 
-function ItemModal({ item, onClose }: ItemModalProps) {
+function ItemModal({ item, onClose, onAdd }: ItemModalProps) {
   if (!item) return null;
 
   return (
@@ -191,7 +203,6 @@ function ItemModal({ item, onClose }: ItemModalProps) {
             <X size={18} />
           </button>
 
-          {/* Render Full Image in Modal */}
           <div className="relative h-64 flex items-center justify-center overflow-hidden shrink-0">
             <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-neutral-950 z-10" />
             <motion.img
@@ -239,6 +250,7 @@ function ItemModal({ item, onClose }: ItemModalProps) {
 
             <motion.button
               whileTap={{ scale: 0.97 }}
+              onClick={() => onAdd(item)}
               className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               <Plus size={18} />
@@ -252,9 +264,22 @@ function ItemModal({ item, onClose }: ItemModalProps) {
 }
 
 export default function MenuPage() {
+  const { cart, addItem, total } = useCart();
+  const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isVegOnly, setIsVegOnly] = useState<boolean>(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const itemCount = cart.reduce((sum, i) => sum + i.qty, 0);
+
+  const handleAddToCart = (item: MenuItem) => {
+    addItem({ name: item.name, price: item.price });
+    setToastMessage(`${item.name} added to cart!`);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2000);
+  };
 
   return (
     <main className="bg-black text-white pb-20">
@@ -292,8 +317,8 @@ export default function MenuPage() {
           <button
             onClick={() => setIsVegOnly(!isVegOnly)}
             className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold transition-all ${
-              isVegOnly 
-                ? "border-green-600 bg-green-600/10 text-green-500" 
+              isVegOnly
+                ? "border-green-600 bg-green-600/10 text-green-500"
                 : "border-white/20 bg-white/5 text-gray-300 hover:bg-white/10"
             }`}
           >
@@ -307,11 +332,11 @@ export default function MenuPage() {
         {categories.map((category) => {
           const items = menuData[category.id] || [];
           const filteredItems = items.filter((item) => {
-            const matchesSearch = 
-              item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            const matchesSearch =
+              item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
               item.description.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesVeg = isVegOnly ? item.isVeg === true : true;
-            
+
             return matchesSearch && matchesVeg;
           });
 
@@ -325,7 +350,7 @@ export default function MenuPage() {
                 <CategoryIcon size={24} className="text-red-600" />
                 {category.label}
               </h2>
-              
+
               <div className="flex flex-col">
                 {filteredItems.map((item, index) => (
                   <ItemRow
@@ -333,6 +358,7 @@ export default function MenuPage() {
                     item={item}
                     index={index}
                     onClick={setSelectedItem}
+                    onAdd={handleAddToCart}
                   />
                 ))}
               </div>
@@ -342,7 +368,7 @@ export default function MenuPage() {
 
         {categories.every(cat => {
           const items = menuData[cat.id] || [];
-          return items.filter(item => 
+          return items.filter(item =>
             (item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
             (isVegOnly ? item.isVeg : true)
           ).length === 0;
@@ -355,8 +381,29 @@ export default function MenuPage() {
       </div>
 
       {selectedItem && (
-        <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <ItemModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onAdd={handleAddToCart}
+        />
       )}
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toastVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-neutral-900 border border-green-600/40 rounded-full px-5 py-3 flex items-center gap-2 shadow-2xl"
+          >
+            <Check size={16} className="text-green-500" />
+            <span className="text-sm font-semibold">{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
 
       <div className="px-6 py-6 text-center">
         <p className="text-gray-600 text-xs">
