@@ -11,6 +11,8 @@ import {
   Package,
   PartyPopper,
   LucideIcon,
+  Loader2,
+  Utensils,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
@@ -40,50 +42,58 @@ interface StatusDisplayConfig {
   border: string;
   icon: LucideIcon;
   message: string;
+  stepIndex: number;
 }
 
 const statusDisplay: Record<string, StatusDisplayConfig> = {
   pending: {
     label: "Order Placed",
-    color: "text-yellow-500",
-    bg: "bg-yellow-500/10",
-    border: "border-yellow-500/30",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
     icon: Clock,
-    message: "Waiting for the counter to accept your order.",
+    message: "Waiting for the counter to accept your order...",
+    stepIndex: 0,
   },
   preparing: {
     label: "Accepted — Preparing",
-    color: "text-blue-500",
+    color: "text-blue-400",
     bg: "bg-blue-500/10",
     border: "border-blue-500/30",
     icon: ChefHat,
-    message: "Your order has been accepted and is being prepared!",
+    message: "Your order is baking freshly in our oven right now!",
+    stepIndex: 1,
   },
   ready: {
     label: "Ready for Pickup",
-    color: "text-orange-500",
+    color: "text-orange-400",
     bg: "bg-orange-500/10",
     border: "border-orange-500/30",
     icon: Package,
-    message: "Your order is ready! Please collect it at the counter.",
+    message: "Your order is hot & ready! Please collect at counter.",
+    stepIndex: 2,
   },
   completed: {
     label: "Completed",
-    color: "text-green-500",
-    bg: "bg-green-500/10",
-    border: "border-green-500/30",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
     icon: PartyPopper,
-    message: "Order completed. Thank you for choosing PizzaFlix!",
+    message: "Order completed. Enjoy your delicious pizza!",
+    stepIndex: 3,
   },
   cancelled: {
     label: "Cancelled",
-    color: "text-red-500",
+    color: "text-red-400",
     bg: "bg-red-500/10",
     border: "border-red-500/30",
     icon: XCircle,
-    message: "This order has been cancelled.",
+    message: "This order was cancelled by the store.",
+    stepIndex: -1,
   },
 };
+
+const steps = ["Placed", "Preparing", "Ready", "Enjoy!"];
 
 export default function OrderReceiptPage() {
   const params = useParams();
@@ -134,8 +144,9 @@ export default function OrderReceiptPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-gray-500">Loading order...</p>
+      <main className="min-h-screen bg-black flex flex-col items-center justify-center gap-3">
+        <Loader2 className="animate-spin text-red-600" size={32} />
+        <p className="text-gray-400 text-sm">Fetching order receipt...</p>
       </main>
     );
   }
@@ -158,19 +169,17 @@ export default function OrderReceiptPage() {
   }
 
   const currentStatus = statusDisplay[order.status] || statusDisplay.pending;
-  const StatusIcon = currentStatus.icon;
 
   return (
     <main className="min-h-screen bg-black text-white">
       <Navbar />
       <div className="h-18" />
 
-      <section className="px-6 py-16 max-w-md mx-auto">
+      <section className="px-6 py-12 max-w-md mx-auto">
         {isExpired ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 18 }}
             className="text-center py-10"
           >
             <XCircle size={56} className="text-red-600 mx-auto mb-4" />
@@ -183,73 +192,169 @@ export default function OrderReceiptPage() {
         ) : (
           <>
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 18 }}
-              className="text-center mb-8"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-6"
             >
-              <CheckCircle2 size={56} className="text-green-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-(--font-bebas)">ORDER PLACED!</h1>
-              <p className="text-gray-400 text-sm mt-2">
+              <CheckCircle2 size={48} className="text-green-500 mx-auto mb-3" />
+              <h1 className="text-3xl font-(--font-bebas) tracking-wider">ORDER PLACED</h1>
+              <p className="text-gray-400 text-xs mt-1">
                 Show this token at the counter to collect your order.
               </p>
             </motion.div>
 
+            {/* Step Tracker */}
+            {currentStatus.stepIndex >= 0 && (
+              <div className="mb-6 px-2">
+                <div className="flex justify-between items-center relative">
+                  <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-neutral-800 -translate-y-1/2 z-0" />
+                  <div
+                    className="absolute top-1/2 left-0 h-[2px] bg-red-600 -translate-y-1/2 z-0 transition-all duration-500"
+                    style={{
+                      width: `${(currentStatus.stepIndex / (steps.length - 1)) * 100}%`,
+                    }}
+                  />
+                  {steps.map((step, idx) => {
+                    const isPassed = idx <= currentStatus.stepIndex;
+                    return (
+                      <div key={step} className="relative z-10 flex flex-col items-center">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                            isPassed
+                              ? "bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                              : "bg-neutral-800 text-neutral-500 border border-neutral-700"
+                          }`}
+                        >
+                          {idx + 1}
+                        </div>
+                        <span className={`text-[10px] mt-1 ${isPassed ? "text-gray-300 font-medium" : "text-neutral-600"}`}>
+                          {step}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Receipt Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden"
+              className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
             >
-              <div className="bg-red-600 text-center py-6">
-                <p className="text-white/70 text-xs uppercase tracking-widest">Your Token</p>
-                <h2 className="text-4xl font-(--font-bebas) text-white mt-1 tracking-wide">
+              {/* Header Token */}
+              <div className="bg-red-600 text-center py-5 relative overflow-hidden">
+                <div className="absolute -right-6 -bottom-6 opacity-10 text-white">
+                  <Utensils size={100} />
+                </div>
+                <p className="text-white/80 text-[11px] uppercase tracking-widest font-semibold">Your Order Token</p>
+                <h2 className="text-4xl font-(--font-bebas) text-white mt-0.5 tracking-wider">
                   {order.order_number}
                 </h2>
               </div>
 
               <div className="p-6">
-                <div className="flex justify-between text-sm text-gray-400 mb-4">
-                  <span>{order.customer_name}</span>
+                <div className="flex justify-between text-xs text-gray-400 mb-4 pb-3 border-b border-white/5">
+                  <span className="font-medium text-gray-300">{order.customer_name}</span>
                   <span>{order.phone}</span>
                 </div>
 
-                <div className="space-y-2 border-t border-white/10 pt-4">
+                <div className="space-y-2.5">
                   {order.items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-300">{item.qty}x {item.name}</span>
-                      <span className="text-white">₹{item.price * item.qty}</span>
+                      <span className="text-gray-300">
+                        <strong className="text-red-500 font-semibold">{item.qty}x</strong> {item.name}
+                      </span>
+                      <span className="text-white font-medium">₹{item.price * item.qty}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center border-t border-white/10 pt-4 mt-4">
-                  <span className="text-gray-400">Total</span>
-                  <span className="text-2xl font-bold">₹{order.total}</span>
+                <div className="flex justify-between items-center border-t border-white/10 pt-4 mt-5">
+                  <span className="text-gray-400 text-sm">Total Amount</span>
+                  <span className="text-2xl font-bold text-white">₹{order.total}</span>
                 </div>
 
+                {/* Animated Status Section */}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={order.status}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className={`flex flex-col items-center gap-2 justify-center mt-6 ${currentStatus.bg} border ${currentStatus.border} rounded-xl py-4 px-4`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className={`flex flex-col items-center justify-center mt-6 ${currentStatus.bg} border ${currentStatus.border} rounded-xl p-5 relative overflow-hidden`}
                   >
-                    <div className="flex items-center gap-2">
-                      <StatusIcon size={18} className={currentStatus.color} />
-                      <span className={`${currentStatus.color} text-sm font-bold uppercase tracking-wide`}>
-                        {currentStatus.label}
-                      </span>
+                    {/* Status Visual Animation */}
+                    <div className="mb-2 relative flex items-center justify-center">
+                      {order.status === "pending" && (
+                        <div className="relative flex items-center justify-center">
+                          <span className="animate-ping absolute inline-flex h-10 w-10 rounded-full bg-amber-400 opacity-30" />
+                          <Clock className="text-amber-400 animate-pulse relative z-10" size={32} />
+                        </div>
+                      )}
+
+                      {order.status === "preparing" && (
+                        <div className="relative">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                            className="absolute -inset-2 border border-blue-500/30 rounded-full border-dashed"
+                          />
+                          <motion.div
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                          >
+                            <ChefHat className="text-blue-400 relative z-10" size={34} />
+                          </motion.div>
+                        </div>
+                      )}
+
+                      {order.status === "ready" && (
+                        <motion.div
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ repeat: Infinity, duration: 1 }}
+                        >
+                          <Package className="text-orange-400" size={34} />
+                        </motion.div>
+                      )}
+
+                      {order.status === "completed" && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <PartyPopper className="text-emerald-400" size={34} />
+                        </motion.div>
+                      )}
+
+                      {order.status === "cancelled" && (
+                        <XCircle className="text-red-400" size={34} />
+                      )}
                     </div>
-                    <p className="text-gray-400 text-xs text-center">
+
+                    <span className={`${currentStatus.color} text-sm font-bold uppercase tracking-wider`}>
+                      {currentStatus.label}
+                    </span>
+
+                    {/* Animated Jumping Dots for Pending State */}
+                    {order.status === "pending" && (
+                      <div className="flex gap-1.5 my-1.5">
+                        <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" />
+                      </div>
+                    )}
+
+                    <p className="text-gray-300 text-xs text-center mt-1 max-w-[240px]">
                       {currentStatus.message}
                     </p>
                   </motion.div>
                 </AnimatePresence>
 
                 {order.expires_at && order.status !== "completed" && (
-                  <p className="text-gray-600 text-xs text-center mt-4">
+                  <p className="text-gray-500 text-[11px] text-center mt-4">
                     Valid until{" "}
                     {new Date(order.expires_at).toLocaleTimeString("en-IN", {
                       hour: "2-digit",
@@ -260,8 +365,8 @@ export default function OrderReceiptPage() {
               </div>
             </motion.div>
 
-            <p className="text-gray-600 text-xs text-center mt-6">
-              Please pay at the counter. This is not a payment confirmation.
+            <p className="text-gray-500 text-[11px] text-center mt-5">
+              Please pay at the counter. This token acts as your receipt.
             </p>
           </>
         )}
