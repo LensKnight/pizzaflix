@@ -94,7 +94,7 @@ export default function MenuSection() {
   const handleDecrement = (item: { name: string; price: number }) => {
     if (removeItem) {
       // Cart context se quantity kam karega (ya 0 hone par remove karega)
-      removeItem({ name: item.name }); 
+      removeItem(item.name); 
     }
   };
 
