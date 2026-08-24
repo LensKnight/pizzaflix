@@ -23,7 +23,7 @@ export default function Loader() {
           transition={{ delay: 0.5 }}
           className="text-white text-lg"
         >
-          Loading delicious food...
+          Loading delicious food....
         </motion.p>
       </motion.div>
     </div>
