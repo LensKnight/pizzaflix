@@ -2,17 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Minus, Plus, Trash2, ShoppingBag, Store, UserCheck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Minus, Plus, Trash2, ShoppingBag, Store, UserCheck, Tag, X, Check, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import AuthModal from "@/components/AuthModal"; // Fixed Typo
+import AuthModal from "@/components/AuthModal";
 
 function generateOrderNumber() {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `PF-${num}`;
+}
+
+interface AppliedOffer {
+  id: string;
+  code: string;
+  title: string;
+  discount_percent: number;
 }
 
 export default function CheckoutPage() {
@@ -23,21 +30,24 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [shopOpen, setShopOpen] = useState<boolean | null>(null);
 
-  // User Auth & Profile State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
 
   useEffect(() => {
     fetchProfileAndAuth();
 
-    // Realtime auth listener for Google OAuth redirects
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         fetchProfileAndAuth();
       }
     });
 
-    // Check shop status
     async function checkShopStatus() {
       const { data } = await supabase
         .from("shop_status")
@@ -55,14 +65,12 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Customer Profile & Session Fetcher
   const fetchProfileAndAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session?.user) {
       setIsLoggedIn(true);
 
-      // 1. Fetch saved details from profiles
       const { data: profile } = await supabase
         .from("profiles")
         .select("name, phone")
@@ -73,7 +81,6 @@ export default function CheckoutPage() {
         if (profile.name) setName(profile.name);
         if (profile.phone) setPhone(profile.phone);
       } else {
-        // Fallback to Google Auth Metadata if profile row doesn't exist yet
         const googleName = session.user.user_metadata?.full_name || session.user.user_metadata?.name;
         if (googleName) setName(googleName);
       }
@@ -82,13 +89,63 @@ export default function CheckoutPage() {
     }
   };
 
+  // ---- Coupon logic ----
+  async function handleApplyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+
+    setCheckingCoupon(true);
+    setCouponError("");
+
+    const { data, error } = await supabase
+      .from("offers")
+      .select("id, code, title, discount_percent, is_active, min_order_value")
+      .eq("code", code)
+      .maybeSingle();
+
+    setCheckingCoupon(false);
+
+    if (error || !data) {
+      setCouponError("Invalid coupon code.");
+      return;
+    }
+
+    if (!data.is_active) {
+      setCouponError("This coupon is no longer active.");
+      return;
+    }
+
+    if (data.min_order_value && total < data.min_order_value) {
+      setCouponError(`This coupon needs a minimum order of ₹${data.min_order_value}.`);
+      return;
+    }
+
+    setAppliedOffer({
+      id: data.id,
+      code: data.code,
+      title: data.title,
+      discount_percent: data.discount_percent,
+    });
+    setCouponInput("");
+    setCouponError("");
+  }
+
+  function removeCoupon() {
+    setAppliedOffer(null);
+    setCouponError("");
+  }
+
+  const discountAmount = appliedOffer
+    ? Math.round((total * appliedOffer.discount_percent) / 100)
+    : 0;
+  const finalTotal = total - discountAmount;
+
   const handleConfirm = async () => {
     if (!name || !phone || cart.length === 0 || !shopOpen) return;
     setLoading(true);
 
     const { data: { session } } = await supabase.auth.getSession();
 
-    // If logged in, update profile table with phone/name if missing
     if (session?.user) {
       await supabase.from("profiles").upsert({
         id: session.user.id,
@@ -105,7 +162,9 @@ export default function CheckoutPage() {
         customer_name: name,
         phone,
         items: cart,
-        total,
+        total: finalTotal,
+        coupon_code: appliedOffer?.code || null,
+        discount_amount: discountAmount,
         status: "pending",
       },
     ]);
@@ -152,7 +211,6 @@ export default function CheckoutPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-(--font-bebas)">YOUR ORDER</h1>
 
-          {/* Quick Login/Status Button */}
           {!isLoggedIn ? (
             <button
               onClick={() => setIsAuthModalOpen(true)}
@@ -167,7 +225,6 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Closed shop notice */}
         {shopOpen === false && (
           <div className="mb-6 p-4 rounded-xl bg-red-600/10 border border-red-600/30 flex items-center gap-3 text-red-500">
             <Store size={20} className="shrink-0" />
@@ -178,7 +235,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Cart items */}
-        <div className="space-y-3 mb-8">
+        <div className="space-y-3 mb-6">
           {cart.map((item) => (
             <div
               key={item.name}
@@ -210,9 +267,83 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        <div className="flex justify-between items-center border-t border-white/10 pt-4 mb-8">
-          <span className="text-gray-400">Total</span>
-          <span className="text-2xl font-bold">₹{total}</span>
+        {/* Coupon section */}
+        <div className="mb-6">
+          {!appliedOffer ? (
+            <div>
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-xl px-4 py-3">
+                  <Tag size={16} className="text-gray-500 shrink-0" />
+                  <input
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                    placeholder="Have a coupon code?"
+                    className="flex-1 bg-transparent text-white placeholder:text-gray-600 outline-none text-sm font-mono"
+                  />
+                </div>
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={!couponInput.trim() || checkingCoupon}
+                  className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-sm font-semibold px-5 rounded-xl transition-colors flex items-center gap-2"
+                >
+                  {checkingCoupon ? <Loader2 size={16} className="animate-spin" /> : "Apply"}
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-red-500 text-xs mt-2 ml-1">{couponError}</p>
+              )}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between bg-green-600/10 border border-green-600/30 rounded-xl px-4 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <Check size={16} className="text-green-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-green-400">
+                    {appliedOffer.code} applied
+                  </p>
+                  <p className="text-xs text-gray-400">{appliedOffer.title}</p>
+                </div>
+              </div>
+              <button onClick={removeCoupon} className="text-gray-400 hover:text-white p-1">
+                <X size={16} />
+              </button>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Bill summary */}
+        <div className="border-t border-white/10 pt-4 mb-8 space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-400">Subtotal</span>
+            <span className="text-gray-300">₹{total}</span>
+          </div>
+
+          <AnimatePresence>
+            {appliedOffer && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex justify-between items-center text-sm overflow-hidden"
+              >
+                <span className="text-green-500">Discount ({appliedOffer.discount_percent}%)</span>
+                <span className="text-green-500">−₹{discountAmount}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex justify-between items-center pt-2 border-t border-white/10">
+            <span className="text-gray-400">Total</span>
+            <span className="text-2xl font-bold">₹{finalTotal}</span>
+          </div>
         </div>
 
         {/* Customer details */}
@@ -253,11 +384,10 @@ export default function CheckoutPage() {
             ? "Placing Order..."
             : shopOpen === false
             ? "Orders Currently Closed"
-            : "Confirm Order"}
+            : `Confirm Order · ₹${finalTotal}`}
         </motion.button>
       </section>
 
-      {/* Login Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

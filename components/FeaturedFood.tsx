@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 const foods = [
   {
@@ -114,12 +115,14 @@ export default function FeaturedFood() {
                 </h3>
 
                 {/* Always visible on mobile, hover-reveal on desktop */}
-                <div className="flex items-center gap-2 mt-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                <Link 
+                  href="/menu"
+                  className="flex items-center gap-2 mt-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                   <span className="text-red-500 text-sm font-semibold">
                     Order Now
                   </span>
                   <span className="text-red-500 text-sm">→</span>
-                </div>
+                </Link>
               </div>
             </motion.div>
           ))}

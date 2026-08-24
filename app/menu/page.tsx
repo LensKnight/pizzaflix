@@ -11,6 +11,7 @@ import {
   CupSoda,
   X,
   Plus,
+  Minus,
   Crown,
   Flame,
   Search,
@@ -71,14 +72,77 @@ function DietTag({ isVeg }: { isVeg: boolean }) {
   );
 }
 
+// ---- Stepper: Add button that becomes - 1 + ----
+function AddStepper({
+  qty,
+  onAdd,
+  onIncrease,
+  onDecrease,
+}: {
+  qty: number;
+  onAdd: () => void;
+  onIncrease: () => void;
+  onDecrease: () => void;
+}) {
+  if (qty === 0) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onAdd();
+        }}
+        className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-white text-black font-extrabold text-xs px-5 py-1.5 rounded-lg shadow-lg border border-gray-200 uppercase tracking-wide hover:bg-gray-100 active:scale-95 transition-all z-10"
+      >
+        Add
+      </button>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      onClick={(e) => e.stopPropagation()}
+      className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-red-600 rounded-lg shadow-lg flex items-center gap-3 px-2 py-1.5 z-10"
+    >
+      <button
+        onClick={onDecrease}
+        className="text-white active:scale-90 transition-transform"
+      >
+        <Minus size={14} strokeWidth={3} />
+      </button>
+      <span className="text-white font-bold text-xs min-w-[12px] text-center">
+        {qty}
+      </span>
+      <button
+        onClick={onIncrease}
+        className="text-white active:scale-90 transition-transform"
+      >
+        <Plus size={14} strokeWidth={3} />
+      </button>
+    </motion.div>
+  );
+}
+
 interface ItemRowProps {
   item: MenuItem;
   onClick: (item: MenuItem) => void;
-  onAdd: (item: MenuItem) => void;
+  qty: number;
+  onAdd: () => void;
+  onIncrease: () => void;
+  onDecrease: () => void;
   index: number;
 }
 
-function ItemRow({ item, onClick, onAdd, index }: ItemRowProps) {
+function ItemRow({
+  item,
+  onClick,
+  qty,
+  onAdd,
+  onIncrease,
+  onDecrease,
+  index,
+}: ItemRowProps) {
   const off = getOffPercent(item.price, item.original_price);
 
   return (
@@ -137,15 +201,12 @@ function ItemRow({ item, onClick, onAdd, index }: ItemRowProps) {
           </span>
         )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdd(item);
-          }}
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-white text-black font-extrabold text-xs px-5 py-1 rounded-lg shadow-lg border border-gray-200 uppercase tracking-wide hover:bg-gray-100 active:scale-95 transition-all z-10"
-        >
-          Add
-        </button>
+        <AddStepper
+          qty={qty}
+          onAdd={onAdd}
+          onIncrease={onIncrease}
+          onDecrease={onDecrease}
+        />
       </div>
     </motion.div>
   );
@@ -154,10 +215,20 @@ function ItemRow({ item, onClick, onAdd, index }: ItemRowProps) {
 interface ItemModalProps {
   item: MenuItem | null;
   onClose: () => void;
-  onAdd: (item: MenuItem) => void;
+  qty: number;
+  onAdd: () => void;
+  onIncrease: () => void;
+  onDecrease: () => void;
 }
 
-function ItemModal({ item, onClose, onAdd }: ItemModalProps) {
+function ItemModal({
+  item,
+  onClose,
+  qty,
+  onAdd,
+  onIncrease,
+  onDecrease,
+}: ItemModalProps) {
   if (!item) return null;
   const off = getOffPercent(item.price, item.original_price);
 
@@ -238,17 +309,32 @@ function ItemModal({ item, onClose, onAdd }: ItemModalProps) {
               )}
             </div>
 
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                onAdd(item);
-                onClose();
-              }}
-              className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              <Plus size={18} />
-              Add to Cart
-            </motion.button>
+            {qty === 0 ? (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onAdd}
+                className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={18} />
+                Add to Cart
+              </motion.button>
+            ) : (
+              <div className="flex items-center justify-between mt-6 bg-red-600 rounded-xl py-2 px-4">
+                <button
+                  onClick={onDecrease}
+                  className="text-white p-2 active:scale-90 transition-transform"
+                >
+                  <Minus size={20} strokeWidth={3} />
+                </button>
+                <span className="text-white font-bold text-lg">{qty}</span>
+                <button
+                  onClick={onIncrease}
+                  className="text-white p-2 active:scale-90 transition-transform"
+                >
+                  <Plus size={20} strokeWidth={3} />
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>
@@ -257,7 +343,7 @@ function ItemModal({ item, onClose, onAdd }: ItemModalProps) {
 }
 
 export default function MenuPage() {
-  const { addItem } = useCart();
+  const { cart, addItem, updateQty } = useCart();
   const [menuData, setMenuData] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -290,12 +376,27 @@ export default function MenuPage() {
     fetchMenu();
   }, []);
 
-  const handleAddToCart = (item: MenuItem) => {
+  function getQty(name: string) {
+    const found = cart.find((i) => i.name === name);
+    return found ? found.qty : 0;
+  }
+
+  function handleAdd(item: MenuItem) {
     addItem({ name: item.name, price: item.price });
     setToastMessage(`${item.name} added to cart!`);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2000);
-  };
+  }
+
+  function handleIncrease(item: MenuItem) {
+    const qty = getQty(item.name);
+    updateQty(item.name, qty + 1);
+  }
+
+  function handleDecrease(item: MenuItem) {
+    const qty = getQty(item.name);
+    updateQty(item.name, qty - 1);
+  }
 
   return (
     <main className="bg-black text-white pb-20">
@@ -384,7 +485,10 @@ export default function MenuPage() {
                       item={item}
                       index={index}
                       onClick={setSelectedItem}
-                      onAdd={handleAddToCart}
+                      qty={getQty(item.name)}
+                      onAdd={() => handleAdd(item)}
+                      onIncrease={() => handleIncrease(item)}
+                      onDecrease={() => handleDecrease(item)}
                     />
                   ))}
                 </div>
@@ -419,7 +523,10 @@ export default function MenuPage() {
         <ItemModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
-          onAdd={handleAddToCart}
+          qty={getQty(selectedItem.name)}
+          onAdd={() => handleAdd(selectedItem)}
+          onIncrease={() => handleIncrease(selectedItem)}
+          onDecrease={() => handleDecrease(selectedItem)}
         />
       )}
 

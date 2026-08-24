@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingBag, ChevronRight } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "@/lib/CartContext";
 
@@ -12,8 +12,8 @@ export default function FloatingCartBar() {
 
   const itemCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  // Hide on checkout page itself (no point showing "view cart" there)
-  if (pathname === "/checkout") return null;
+  // Hide on checkout page AND all admin pages
+  if (pathname === "/checkout" || pathname.startsWith("/admin")) return null;
 
   return (
     <AnimatePresence>
@@ -29,41 +29,36 @@ export default function FloatingCartBar() {
             onClick={() => router.push("/checkout")}
             className="
               w-full
-              bg-red-600/70
-              backdrop-blur-xl
-              border border-white/20
-              rounded-full
-              px-5 py-3.5
+              bg-red-600 
+              text-white
+              rounded-xl
+              px-4 py-3.5
               flex items-center justify-between
-              shadow-2xl shadow-red-600/30
-              hover:bg-red-600/80
-              transition-colors
+              shadow-[0_8px_30px_rgb(0,0,0,0.4)]
+              active:scale-[0.98]
+              transition-transform
             "
           >
+            {/* Left Side: Icon & Price */}
             <div className="flex items-center gap-3">
-              <div className="relative bg-white/15 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center">
-                <ShoppingCart size={18} className="text-white" />
-                <span className="absolute -top-1.5 -right-1.5 bg-white text-red-600 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-red-600">
-                  {itemCount}
-                </span>
+              <div className="bg-black/15 p-2 rounded-lg">
+                <ShoppingBag size={22} className="text-white" />
               </div>
-              <div className="text-left">
-                <p className="text-white font-bold text-sm leading-tight">
-                  {itemCount} item{itemCount > 1 ? "s" : ""}
+              <div className="text-left flex flex-col justify-center">
+                <p className="text-white/90 font-semibold text-xs tracking-wide">
+                  {itemCount} ITEM{itemCount > 1 ? "S" : ""}
                 </p>
-                <p className="text-white/80 text-xs">₹{total}</p>
+                <p className="text-white font-bold text-lg leading-none mt-1">
+                  ₹{total}
+                </p>
               </div>
             </div>
 
-            <span className="text-white font-bold text-sm flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-              View Cart
-              <motion.span
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 1.2, repeat: Infinity }}
-              >
-                →
-              </motion.span>
-            </span>
+            {/* Right Side: Action Text & Arrow */}
+            <div className="flex items-center gap-1 font-bold text-base pr-1">
+              View cart
+              <ChevronRight size={20} className="mt-0.5" />
+            </div>
           </button>
         </motion.div>
       )}

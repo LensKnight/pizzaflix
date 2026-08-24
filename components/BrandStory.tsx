@@ -1,10 +1,34 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
 
+// Helper component for the counting effect
+function StatCounter({ to, suffix, duration = 2 }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest));
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+
+  useEffect(() => {
+    if (inView) {
+      const controls = animate(count, to, { duration, ease: "easeOut" });
+      return () => controls.stop();
+    }
+  }, [inView, count, to, duration]);
+
+  return (
+    <span ref={ref}>
+      <motion.span>{rounded}</motion.span>
+      {suffix}
+    </span>
+  );
+}
+
+// Separated the numbers and suffix for the animation
 const stats = [
-  { value: "1000+", label: "Happy Customers" },
-  { value: "20+", label: "Menu Items" },
+  { value: 1000, suffix: "+", label: "Happy Customers" },
+  { value: 20, suffix: "+", label: "Menu Items" },
 ];
 
 export default function BrandStory() {
@@ -86,20 +110,6 @@ export default function BrandStory() {
               memorable moments.
             </motion.p>
 
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              viewport={{ once: true }}
-              whileHover={{ gap: "14px" }}
-              className="mt-8 flex items-center gap-2 text-white font-semibold group"
-            >
-              <span className="border-b border-red-600 pb-1 group-hover:text-red-600 transition-colors">
-                Discover Our Story
-              </span>
-              <span className="text-red-600">→</span>
-            </motion.button>
-
             {/* Stats row */}
             <div className="flex flex-wrap gap-x-12 gap-y-6 mt-14 pt-10 border-t border-white/10">
               {stats.map((stat, index) => (
@@ -110,8 +120,8 @@ export default function BrandStory() {
                   transition={{ duration: 0.6, delay: 0.5 + index * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <h4 className="text-4xl font-(--font-bebas) text-white">
-                    {stat.value}
+                  <h4 className="text-4xl font-(--font-bebas) text-white flex items-center">
+                    <StatCounter to={stat.value} suffix={stat.suffix} />
                   </h4>
                   <p className="text-gray-500 text-sm mt-1 uppercase tracking-wide">
                     {stat.label}

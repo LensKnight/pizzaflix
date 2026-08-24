@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   CircleOff,
   Search,
+  Wallet,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -43,6 +44,7 @@ interface Offer {
   discount_percent: number;
   valid_until: string;
   is_active: boolean;
+  min_order_value: number;
 }
 
 const categories = [
@@ -210,6 +212,7 @@ export default function ManageAdmin() {
         discount_percent: offer.discount_percent,
         valid_until: offer.valid_until,
         is_active: offer.is_active,
+        min_order_value: offer.min_order_value,
       })
       .eq("id", offer.id);
 
@@ -227,6 +230,7 @@ export default function ManageAdmin() {
           discount_percent: 10,
           valid_until: "",
           is_active: true,
+          min_order_value: 0,
         },
       ])
       .select();
@@ -313,9 +317,7 @@ export default function ManageAdmin() {
 
       <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
 
-        {/* =====================================================
-            HEADER
-        ===================================================== */}
+        {/* HEADER */}
 
         <header className="mb-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -340,8 +342,6 @@ export default function ManageAdmin() {
                 offers and promotional campaigns from one place.
               </p>
             </div>
-
-            {/* COMMON ADD BUTTON */}
 
             {tab === "menu" && (
               <button
@@ -373,9 +373,7 @@ export default function ManageAdmin() {
           </div>
         </header>
 
-        {/* =====================================================
-            STATS
-        ===================================================== */}
+        {/* STATS */}
 
         {tab === "menu" && (
           <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -410,9 +408,7 @@ export default function ManageAdmin() {
           </div>
         )}
 
-        {/* =====================================================
-            TABS
-        ===================================================== */}
+        {/* TABS */}
 
         <div className="mb-7 flex items-center justify-between gap-4">
 
@@ -457,20 +453,14 @@ export default function ManageAdmin() {
 
         </div>
 
-        {/* =====================================================
-            MENU TAB
-        ===================================================== */}
+        {/* MENU TAB */}
 
         {tab === "menu" && (
           <section>
 
-            {/* Category + Search */}
-
             <div className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3">
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-
-                {/* Categories */}
 
                 <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0">
                   {categories.map((cat) => {
@@ -515,8 +505,6 @@ export default function ManageAdmin() {
                   })}
                 </div>
 
-                {/* Search */}
-
                 <div className="relative w-full lg:w-64">
                   <Search
                     size={15}
@@ -533,8 +521,6 @@ export default function ManageAdmin() {
 
               </div>
             </div>
-
-            {/* Category Heading */}
 
             <div className="mb-5 flex items-end justify-between">
 
@@ -569,8 +555,6 @@ export default function ManageAdmin() {
 
             </div>
 
-            {/* Items */}
-
             <div className="space-y-3">
 
               <AnimatePresence mode="popLayout">
@@ -601,8 +585,6 @@ export default function ManageAdmin() {
                     }`}
                   >
 
-                    {/* Bestseller indicator */}
-
                     {item.is_top && (
                       <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-yellow-500">
                         <Sparkles size={11} />
@@ -613,8 +595,6 @@ export default function ManageAdmin() {
                     <div className="p-4 sm:p-5">
 
                       <div className="flex flex-col gap-5 md:flex-row">
-
-                        {/* Image */}
 
                         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.08] bg-black sm:h-28 sm:w-28">
 
@@ -638,8 +618,6 @@ export default function ManageAdmin() {
                             </div>
                           )}
 
-                          {/* Veg indicator */}
-
                           <div
                             className={`absolute bottom-2 left-2 h-4 w-4 rounded border-2 bg-black ${
                               item.is_veg
@@ -658,11 +636,7 @@ export default function ManageAdmin() {
 
                         </div>
 
-                        {/* Main Content */}
-
                         <div className="min-w-0 flex-1">
-
-                          {/* Name / Price */}
 
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 
@@ -708,8 +682,6 @@ export default function ManageAdmin() {
                               </div>
 
                             </div>
-
-                            {/* Controls */}
 
                             <div className="flex flex-wrap items-center gap-2">
 
@@ -762,8 +734,6 @@ export default function ManageAdmin() {
 
                           </div>
 
-                          {/* Description */}
-
                           <textarea
                             value={item.description}
                             onChange={(e) =>
@@ -778,11 +748,7 @@ export default function ManageAdmin() {
                             className="mt-3 w-full resize-none rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2.5 text-sm leading-5 text-neutral-400 outline-none transition-colors placeholder:text-neutral-700 focus:border-white/[0.12] focus:text-neutral-300"
                           />
 
-                          {/* Bottom Fields */}
-
                           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-
-                            {/* Image */}
 
                             <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2">
                               <ImageIcon
@@ -805,8 +771,6 @@ export default function ManageAdmin() {
                               />
                             </div>
 
-                            {/* Price */}
-
                             <div className="flex items-center rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2">
                               <span className="mr-1 text-xs text-neutral-700">
                                 ₹
@@ -825,8 +789,6 @@ export default function ManageAdmin() {
                                 className="w-20 bg-transparent text-xs text-white outline-none"
                               />
                             </div>
-
-                            {/* Original Price */}
 
                             <div className="flex items-center rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2">
                               <span className="mr-1 text-xs text-neutral-700">
@@ -861,8 +823,6 @@ export default function ManageAdmin() {
               </AnimatePresence>
 
             </div>
-
-            {/* Empty State */}
 
             {filteredItems.length === 0 && (
               <motion.div
@@ -904,14 +864,10 @@ export default function ManageAdmin() {
           </section>
         )}
 
-        {/* =====================================================
-            OFFERS TAB
-        ===================================================== */}
+        {/* OFFERS TAB */}
 
         {tab === "offers" && (
           <section>
-
-            {/* Offers header */}
 
             <div className="mb-6 rounded-2xl border border-white/[0.07] bg-gradient-to-br from-red-600/[0.08] to-transparent p-5">
 
@@ -949,8 +905,6 @@ export default function ManageAdmin() {
 
             </div>
 
-            {/* Offers */}
-
             <div className="space-y-3">
 
               <AnimatePresence mode="popLayout">
@@ -982,7 +936,7 @@ export default function ManageAdmin() {
 
                       <div className="flex flex-col gap-4">
 
-                        {/* Title row */}
+                        {/* Title + discount row */}
 
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
 
@@ -1025,6 +979,37 @@ export default function ManageAdmin() {
 
                         </div>
 
+                        {/* NEW: Minimum order value row */}
+
+                        <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2.5 w-fit">
+                          <Wallet
+                            size={14}
+                            className="text-neutral-500 shrink-0"
+                          />
+
+                          <span className="text-xs text-neutral-500 whitespace-nowrap">
+                            Min. order ₹
+                          </span>
+
+                          <input
+                            type="number"
+                            value={offer.min_order_value}
+                            onChange={(e) =>
+                              updateLocalOffer(
+                                offer.id,
+                                "min_order_value",
+                                Number(e.target.value)
+                              )
+                            }
+                            placeholder="0"
+                            className="w-20 bg-transparent text-sm font-bold text-white outline-none"
+                          />
+
+                          <span className="text-[10px] text-neutral-600">
+                            (0 = no minimum)
+                          </span>
+                        </div>
+
                         {/* Description */}
 
                         <textarea
@@ -1044,8 +1029,6 @@ export default function ManageAdmin() {
                         {/* Bottom controls */}
 
                         <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto_auto_auto]">
-
-                          {/* Coupon */}
 
                           <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2.5">
                             <Tag
@@ -1067,8 +1050,6 @@ export default function ManageAdmin() {
                             />
                           </div>
 
-                          {/* Valid Until */}
-
                           <input
                             value={offer.valid_until}
                             onChange={(e) =>
@@ -1081,8 +1062,6 @@ export default function ManageAdmin() {
                             placeholder="Valid until"
                             className="rounded-xl border border-white/[0.06] bg-black/50 px-3 py-2.5 text-xs text-white outline-none placeholder:text-neutral-700 focus:border-white/[0.12]"
                           />
-
-                          {/* Active */}
 
                           <button
                             onClick={() =>
@@ -1105,8 +1084,6 @@ export default function ManageAdmin() {
                               : "Paused"}
                           </button>
 
-                          {/* Save */}
-
                           <button
                             onClick={() =>
                               saveOffer(offer)
@@ -1122,8 +1099,6 @@ export default function ManageAdmin() {
                               ? "Saving..."
                               : "Save"}
                           </button>
-
-                          {/* Delete */}
 
                           <button
                             onClick={() =>
@@ -1147,8 +1122,6 @@ export default function ManageAdmin() {
               </AnimatePresence>
 
             </div>
-
-            {/* Empty Offers */}
 
             {offers.length === 0 && (
               <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.015] text-center">
@@ -1184,9 +1157,7 @@ export default function ManageAdmin() {
 
       </div>
 
-      {/* =====================================================
-          ADD ITEM MODAL
-      ===================================================== */}
+      {/* ADD ITEM MODAL */}
 
       <AnimatePresence>
 
@@ -1214,8 +1185,6 @@ export default function ManageAdmin() {
               }}
               className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black"
             >
-
-              {/* Modal header */}
 
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.07] bg-[#0d0d0d]/95 px-5 py-4 backdrop-blur-xl sm:px-6">
 
@@ -1247,14 +1216,10 @@ export default function ManageAdmin() {
 
               </div>
 
-              {/* Modal body */}
-
               <form
                 onSubmit={handleCreateItem}
                 className="space-y-5 p-5 sm:p-6"
               >
-
-                {/* Category */}
 
                 <div>
 
@@ -1293,8 +1258,6 @@ export default function ManageAdmin() {
 
                 </div>
 
-                {/* Item name */}
-
                 <div>
 
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -1316,8 +1279,6 @@ export default function ManageAdmin() {
                   />
 
                 </div>
-
-                {/* Prices */}
 
                 <div className="grid grid-cols-2 gap-3">
 
@@ -1384,8 +1345,6 @@ export default function ManageAdmin() {
 
                 </div>
 
-                {/* Image */}
-
                 <div>
 
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -1439,8 +1398,6 @@ export default function ManageAdmin() {
 
                 </div>
 
-                {/* Description */}
-
                 <div>
 
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -1461,8 +1418,6 @@ export default function ManageAdmin() {
                   />
 
                 </div>
-
-                {/* Options */}
 
                 <div className="grid grid-cols-2 gap-3">
 
@@ -1527,8 +1482,6 @@ export default function ManageAdmin() {
                   </label>
 
                 </div>
-
-                {/* Actions */}
 
                 <div className="flex gap-3 border-t border-white/[0.07] pt-5">
 

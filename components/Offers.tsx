@@ -1,37 +1,21 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Check, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
-const offers = [
-  {
-    title: "Buy 1 Get 1 Free",
-    description: "Get any pizza free with the purchase of another pizza",
-    validUntil: "Until 31st Dec",
-    code: "BOGO2024",
-  },
-  {
-    title: "20% OFF Weekend Special",
-    description: "Weekend discount on all items above ₹500",
-    validUntil: "Weekends Only",
-    code: "WEEKEND20",
-  },
-  {
-    title: "Free Delivery",
-    description: "Free delivery on all orders above ₹1000",
-    validUntil: "Always",
-    code: "FREEDRO",
-  },
-  {
-    title: "Early Bird Special",
-    description: "Get 15% OFF before 10 AM",
-    validUntil: "Mon – Fri",
-    code: "EARLYBIRD",
-  },
-];
+interface Offer {
+  id: string;
+  title: string;
+  description: string;
+  code: string;
+  discount_percent: number;
+  valid_until: string;
+  is_active: boolean;
+}
 
-function OfferCoupon({ offer, index, revealed }) {
+function OfferCoupon({ offer, index, revealed, total }: { offer: Offer; index: number; revealed: boolean; total: number }) {
   const [copied, setCopied] = useState(false);
   const [tearing, setTearing] = useState(false);
 
@@ -63,7 +47,7 @@ function OfferCoupon({ offer, index, revealed }) {
       }
       transition={{ type: "spring", stiffness: 220, damping: 24 }}
       style={{
-        zIndex: revealed ? 1 : offers.length - index,
+        zIndex: revealed ? 1 : total - index,
         gridColumn: revealed ? undefined : "1 / -1",
         gridRow: revealed ? undefined : 1,
       }}
@@ -78,7 +62,7 @@ function OfferCoupon({ offer, index, revealed }) {
         <div className="absolute inset-0 bg-linear-to-br from-red-600/0 to-red-600/0 hover:from-red-600/5 hover:to-transparent transition-all duration-500" />
 
         <span className="text-xs md:text-sm text-red-500 uppercase tracking-widest font-semibold">
-          {offer.validUntil}
+          {offer.valid_until}
         </span>
 
         <h3 className="text-2xl md:text-3xl font-bold mt-2 font-(--font-bebas) leading-tight">
@@ -129,6 +113,25 @@ function OfferCoupon({ offer, index, revealed }) {
 
 export default function Offers() {
   const [revealed, setRevealed] = useState(false);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOffers() {
+      const { data, error } = await supabase
+        .from("offers")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) console.error("Fetch offers error:", error);
+      if (data) setOffers(data);
+      setLoading(false);
+    }
+    fetchOffers();
+  }, []);
+
+  if (!loading && offers.length === 0) return null;
 
   return (
     <section id="Offers" className="relative px-6 py-20 md:py-32 bg-neutral-900 text-white overflow-hidden scroll-mt-20">
@@ -156,35 +159,44 @@ export default function Offers() {
           </h2>
         </motion.div>
 
-        {!revealed && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => setRevealed(true)}
-            className="flex items-center gap-2 mx-auto mb-10 text-red-500 font-semibold text-sm uppercase tracking-wide"
-          >
-            <Sparkles size={16} className="animate-pulse" />
-            Tap the deck to reveal offers
-          </motion.button>
-        )}
+        {loading ? (
+          <p className="text-center text-gray-500 text-sm">Loading offers...</p>
+        ) : (
+          <>
+            {!revealed && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={() => setRevealed(true)}
+                className="flex items-center gap-2 mx-auto mb-10 text-red-500 font-semibold text-sm uppercase tracking-wide"
+              >
+                <Sparkles size={16} className="animate-pulse" />
+                Tap the deck to reveal offers
+              </motion.button>
+            )}
 
-        <div
-          className={
-            revealed
-              ? "grid md:grid-cols-2 gap-6 md:gap-8"
-              : "grid place-items-center min-h-[220px] cursor-pointer"
-          }
-          onClick={() => !revealed && setRevealed(true)}
-        >
-          {offers.map((offer, index) => (
-            <OfferCoupon
-              key={index}
-              offer={offer}
-              index={index}
-              revealed={revealed}
-            />
-          ))}
-        </div>
+            <div
+              className={
+                revealed
+                  ? "grid md:grid-cols-2 gap-6 md:gap-8"
+                  : "grid place-items-center min-h-[220px] cursor-pointer"
+              }
+              onClick={() => !revealed && setRevealed(true)}
+            >
+              <AnimatePresence>
+                {offers.map((offer, index) => (
+                  <OfferCoupon
+                    key={offer.id}
+                    offer={offer}
+                    index={index}
+                    revealed={revealed}
+                    total={offers.length}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

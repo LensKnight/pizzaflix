@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, Check } from "lucide-react";
+import { Plus, Minus, Check } from "lucide-react";
 import { useCart } from "@/lib/CartContext";
 
 // 5 items selected from different categories with their respective offers and real image links
@@ -69,15 +69,33 @@ function DietTag({ isVeg }: DietTagProps) {
 }
 
 export default function MenuSection() {
-  const { addItem } = useCart();
+  const { cart, addItem, removeItem } = useCart();
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  const handleAddToCart = (item: { name: string; price: number }) => {
+  // Cart Context se specific item ki real quantity nikalne ka helper
+  const getItemQuantity = (itemName: string) => {
+    const item = cart.find((i: { name: string; qty: number }) => i.name === itemName);
+    return item ? item.qty : 0;
+  };
+
+  const handleIncrement = (item: { name: string; price: number }) => {
+    const currentQty = getItemQuantity(item.name);
+    
     addItem({ name: item.name, price: item.price });
-    setToastMessage(`${item.name} added to cart!`);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000);
+    
+    if (currentQty === 0) {
+      setToastMessage(`${item.name} added to cart!`);
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 2000);
+    }
+  };
+
+  const handleDecrement = (item: { name: string; price: number }) => {
+    if (removeItem) {
+      // Cart context se quantity kam karega (ya 0 hone par remove karega)
+      removeItem({ name: item.name }); 
+    }
   };
 
   return (
@@ -101,61 +119,88 @@ export default function MenuSection() {
               PIZZA & MORE
             </span>
           </h2>
+          <p className="text-gray-600  font-semibold mb-5 text-sm">
+            Go to our Menu page to add/remove items
+          </p>
         </motion.div>
 
         <div className="flex flex-col divide-y divide-white/10">
-          {menuItems.map((item, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.05 }}
-              viewport={{ once: true }}
-              className="flex items-center gap-4 py-5"
-            >
-              {/* Thumbnail */}
-              <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-white/5">
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
+          {menuItems.map((item, index) => {
+            // Live Cart Context se quantity le rahe hain
+            const quantity = getItemQuantity(item.name);
 
-              {/* Details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <DietTag isVeg={item.isVeg} />
-                  <h3 className="text-lg md:text-xl font-bold font-(--font-bebas) tracking-wide truncate">
-                    {item.name}
-                  </h3>
-                </div>
-
-                <p className="text-gray-400 text-sm mt-1 line-clamp-2">
-                  {item.description}
-                </p>
-
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-white font-bold text-base">₹{item.price}</span>
-                  <span className="text-gray-500 text-sm line-through">₹{item.original}</span>
-                  <span className="text-green-500 text-xs font-bold bg-green-500/10 px-1.5 py-0.5 rounded">
-                    {item.off}% OFF
-                  </span>
-                </div>
-              </div>
-
-              {/* Add button */}
-              <button
-                onClick={() => handleAddToCart(item)}
-                className="shrink-0 flex items-center gap-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.05 }}
+                viewport={{ once: true }}
+                className="flex items-center gap-4 py-5"
               >
-                <Plus size={16} />
-                <span className="hidden sm:inline">Add</span>
-              </button>
-            </motion.div>
-          ))}
+                {/* Thumbnail */}
+                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-white/5">
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <DietTag isVeg={item.isVeg} />
+                    <h3 className="text-lg md:text-xl font-bold font-(--font-bebas) tracking-wide truncate">
+                      {item.name}
+                    </h3>
+                  </div>
+
+                  <p className="text-gray-400 text-sm mt-1 line-clamp-2">
+                    {item.description}
+                  </p>
+
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-white font-bold text-base">₹{item.price}</span>
+                    <span className="text-gray-500 text-sm line-through">₹{item.original}</span>
+                    <span className="text-green-500 text-xs font-bold bg-green-500/10 px-1.5 py-0.5 rounded">
+                      {item.off}% OFF
+                    </span>
+                  </div>
+                </div>
+
+                {/* Swiggy/Zomato Style Add Button */}
+                <div className="shrink-0 w-24">
+                  {quantity === 0 ? (
+                    <button
+                      onClick={() => handleIncrement(item)}
+                      className="w-full flex items-center justify-center gap-1 bg-red-600/10 border border-red-600/50 hover:bg-red-600 text-red-500 hover:text-white font-bold py-2 rounded-lg transition-all"
+                    >
+                      ADD <Plus size={14} className="mt-0.5" />
+                    </button>
+                  ) : (
+                    <div className="w-full flex items-center justify-between bg-red-600 text-white font-bold py-1.5 px-2 rounded-lg shadow-lg">
+                      <button 
+                        onClick={() => handleDecrement(item)} 
+                        className="p-1 hover:bg-black/20 rounded transition-colors active:scale-95"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-sm">{quantity}</span>
+                      <button 
+                        onClick={() => handleIncrement(item)} 
+                        className="p-1 hover:bg-black/20 rounded transition-colors active:scale-95"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* View Full Menu CTA */}
