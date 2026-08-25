@@ -10,7 +10,7 @@ export default function MadeByBadge() {
 
   return (
     <a
-      href="https://wa.me/916003131035?text=Hi! I saw your work on PizzaFlix's website."
+      href="vishaldas.vercel.app"
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-4 right-4 z-80 group flex items-center gap-2 bg-black/80 backdrop-blur-xl border border-white/10 hover:border-red-600/40 text-white px-4 py-2.5 rounded-full shadow-2xl transition-all hover:scale-105"
