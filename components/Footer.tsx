@@ -137,7 +137,7 @@ export default function Footer() {
                   className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors group"
                 >
                   <Phone size={16} className="text-red-600 shrink-0" />
-                  <span className="group-hover:underline">+91 xxxxx xxxxx</span>
+                  <span className="group-hover:underline">+91 88229 98429</span>
                 </a>
               </li>
               <li>
@@ -146,7 +146,7 @@ export default function Footer() {
                   className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors group"
                 >
                   <Mail size={16} className="text-red-600 shrink-0" />
-                  <span className="group-hover:underline">info@pizzaflix.com</span>
+                  <span className="group-hover:underline">not provided yet</span>
                 </a>
               </li>
             </ul>

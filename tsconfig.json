@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "components/MenuSection.jsx", "components/BrandStory.jsx", "components/FeaturedFood.jsx", "app/admin/manage/page.jsx", "app/admin/manage/page.jsx", "app/order/[id]/page.jsx", "components/Reviews.jsx", "components/Reviews.jsx", "components/Offers.jsx", "components/MenuSection.jsx", "app/menu/page.jsx"  ],
   "exclude": ["node_modules"]
 }
