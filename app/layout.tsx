@@ -4,7 +4,7 @@ import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
 import { CartProvider } from "@/lib/CartContext";
 import FloatingCartBar from "@/components/FloatingCartBar";
-import LoadingScreen from "@/components/LoadingScreen";
+import MadeByBadge from "@/components/MadeByBadge";
 
 const bebas = Bebas_Neue({
   weight: "400",
@@ -33,12 +33,11 @@ export default function RootLayout({
         className={`${bebas.variable} ${inter.variable} antialiased`}
       >
         <CartProvider>
-          <LoadingScreen/>
           <SmoothScroll>{children}</SmoothScroll>
           <FloatingCartBar />
+          <MadeByBadge />
         </CartProvider>
       </body>
     </html>
   );
 }
-

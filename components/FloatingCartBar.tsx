@@ -23,7 +23,7 @@ export default function FloatingCartBar() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-4 left-4 right-4 z-[60] max-w-md mx-auto"
+          className="fixed bottom-4 left-4 right-4 z-60 max-w-md mx-auto"
         >
           <button
             onClick={() => router.push("/checkout")}

@@ -35,7 +35,7 @@ export default function BrandStory() {
   return (
     <section id="aboutus" className="relative px-6 py-32 bg-black overflow-hidden">
       {/* Ambient glow */}
-      <div className="absolute top-1/3 left-0 -translate-x-1/2 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute top-1/3 left-0 -translate-x-1/2 w-125 h-125 bg-red-600/10 rounded-full blur-[130px] pointer-events-none" />
 
       {/* Giant decorative background text */}
       <motion.span
@@ -66,7 +66,7 @@ export default function BrandStory() {
             whileInView={{ scaleY: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             viewport={{ once: true }}
-            className="hidden md:block w-[3px] bg-linear-to-b from-red-600 via-red-600 to-transparent origin-top shadow-[0_0_20px_rgba(220,38,38,0.6)]"
+            className="hidden md:block w-0.5 bg-linear-to-b from-red-600 via-red-600 to-transparent origin-top shadow-[0_0_20px_rgba(220,38,38,0.6)]"
           />
 
           <div>
@@ -77,7 +77,7 @@ export default function BrandStory() {
               viewport={{ once: true }}
               className="flex items-center gap-3"
             >
-              <span className="w-8 h-[2px] bg-red-600" />
+              <span className="w-8 h-0.5 bg-red-600" />
               <p className="text-red-600 font-semibold tracking-[5px] uppercase text-sm">
                 Brand Story
               </p>
